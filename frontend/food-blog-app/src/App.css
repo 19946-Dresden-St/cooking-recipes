@@ -30,6 +30,7 @@ header ul{
 header ul li{
   list-style: none;
   cursor: pointer;
+  color: black;
 }
 
 li a{
@@ -50,6 +51,7 @@ li .login{
 
 header h2{
   margin-left: 1rem;
+  color: black;
 }
 
 section{

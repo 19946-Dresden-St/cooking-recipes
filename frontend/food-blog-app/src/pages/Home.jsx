@@ -1,5 +1,7 @@
 import React from 'react'
 import foodRecipe from '../assets/cookies.jpeg'
+import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.jsx";
 
 export default function Home() {
     return (
