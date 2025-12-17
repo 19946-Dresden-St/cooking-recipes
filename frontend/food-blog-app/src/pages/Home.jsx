@@ -1,15 +1,19 @@
 import React from 'react'
 import foodRecipe from '../assets/cookies.jpeg'
 import RecipeItems from "../components/RecipeItems.jsx";
+import {useNavigate} from "react-router-dom";
 
 export default function Home() {
+
+    const navigate = useNavigate();
+
     return (
         <>
             <section className="home">
                 <div className="left">
                     <h1>Food Recipe</h1>
                     <h5>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ad commodi cumque dolores exercitationem fuga harum iusto laudantium magnam minima modi natus odit pariatur, quibusdam sunt tenetur voluptate, voluptatum. Est, provident.</h5>
-                    <button>Share your recipe</button>
+                    <button onClick={() => navigate("/addRecipe")} >Share your recipe</button>
                 </div>
                 <div className="right">
                     <img src={foodRecipe} width="320px" height="300px" alt="cookies picture"></img>
