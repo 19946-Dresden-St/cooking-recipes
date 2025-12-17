@@ -1,15 +1,28 @@
-import React from 'react'
+import React, {useEffect, useState} from 'react'
 import {Link, useLoaderData} from "react-router-dom";
 import foodImg from '../assets/cookies.jpeg'
 import { BsFillStopwatchFill } from "react-icons/bs";
 import { FaHeart } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
+import axios from "axios";
 
 export default function RecipeItems() {
-    const allRecipes = useLoaderData()
+    const recipes = useLoaderData()
+    const [allRecipes, setAllRecipes] = useState()
     let path = window.location.pathname === "/myRecipe" ? true : false
     console.log(allRecipes)
+
+    useEffect(() => {
+        setAllRecipes(recipes)
+    },[recipes])
+
+    const onDelete = async (id) => {
+        await axios.delete(`http://localhost:5001/recipe/${id}`)
+        .then((res) => console.log(res))
+        setAllRecipes(recipes => recipes.filter(recipe => recipe._id !== id))
+    }
+
     return (
         <>
             <div className="card-container">
@@ -32,7 +45,7 @@ export default function RecipeItems() {
                                                     >
                                                         <FaEdit />
                                                     </Link>
-                                                    <MdDelete className="deleteIcon" />
+                                                    <MdDelete onClick={() => onDelete(item._id)} className="deleteIcon"/>
                                                 </div>
                                             )
                                         }
