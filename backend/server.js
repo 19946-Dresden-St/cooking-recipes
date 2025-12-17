@@ -14,6 +14,10 @@ app.use(cors());
 
 app.use("/", require("./routes/user"));
 app.use("/recipe", require("./routes/recipe"));
+app.get("/health", (req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
