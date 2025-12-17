@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react'
-import {Link, useLoaderData} from "react-router-dom";
+import {Link, useLoaderData, useNavigate} from "react-router-dom";
 import foodImg from '../assets/cookies.jpeg'
 import { BsFillStopwatchFill } from "react-icons/bs";
 import { FaHeart } from "react-icons/fa6";
@@ -13,6 +13,7 @@ export default function RecipeItems() {
     let path = window.location.pathname === "/myRecipe" ? true : false
     let favItems = JSON.parse(localStorage.getItem("fav")) ?? []
     const [isFavRecipe, setIsFavRecipe] = useState(false)
+    const navigate=useNavigate()
     console.log(allRecipes)
 
     useEffect(() => {
@@ -40,7 +41,7 @@ export default function RecipeItems() {
                 {
                     allRecipes?.map((item, index) => {
                         return (
-                            <div key={index} className="card">
+                            <div key={index} className="card" onDoubleClick={()=>navigate(`/recipe/${item._id}`)}>
                                 <img src={`http://localhost:5001/images/${item.coverImage}`} alt="cookies picture" width="120px" height="100px"></img>
                                 <div className="card-body">
                                     <div className="title">{item.title}</div>
