@@ -4,13 +4,13 @@ import InputForm from "./InputForm.jsx";
 import {NavLink} from "react-router-dom";
 
 export default function Navbar() {
-    const [isOpen, setIsOpen] = useState(false);
-
-    let token = localStorage.getItem("token");
-    const [isLogin, setIsLogin] = useState(token ? true : false);
+    const [isOpen, setIsOpen] = useState(false)
+    let token = localStorage.getItem("token")
+    const [isLogin, setIsLogin] = useState(token ? true : false)
+    let user = JSON.parse(localStorage.getItem("user"))
 
     useEffect(() => {
-        setIsLogin(token ? false : true);
+        setIsLogin(token ? false : true)
     }, [token])
 
     const checkLogin = () => {
@@ -31,7 +31,12 @@ export default function Navbar() {
                     <li><NavLink to="/">Home</NavLink></li>
                     <li><NavLink onClick={() => isLogin && setIsOpen(true)} to={ !isLogin ? "/myRecipe" : "/"}>My Recipes</NavLink></li>
                     <li><NavLink onClick={() => isLogin && setIsOpen(true)} to={ !isLogin ? "/favRecipe" : "/"}>Favourites</NavLink></li>
-                    <li onClick={checkLogin}><p className="login">{ (isLogin) ? "Login" : "Logout" }</p></li>
+                    <li onClick={checkLogin}>
+                        <p className="login">
+                            { (isLogin) ? "Login" : "Logout" }
+                            { user?.email ? `(${user?.email})` : "" }
+                        </p>
+                    </li>
                 </ul>
             </header>
             {
