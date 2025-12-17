@@ -11,6 +11,8 @@ export default function RecipeItems() {
     const recipes = useLoaderData()
     const [allRecipes, setAllRecipes] = useState()
     let path = window.location.pathname === "/myRecipe" ? true : false
+    let favItems = JSON.parse(localStorage.getItem("fav")) ?? []
+    const [isFavRecipe, setIsFavRecipe] = useState(false)
     console.log(allRecipes)
 
     useEffect(() => {
@@ -21,6 +23,15 @@ export default function RecipeItems() {
         await axios.delete(`http://localhost:5001/recipe/${id}`)
         .then((res) => console.log(res))
         setAllRecipes(recipes => recipes.filter(recipe => recipe._id !== id))
+        let filteredItems = favItems.filter(recipe => recipe._id !== id)
+        localStorage.setItem("fav", JSON.stringify(filteredItems))
+    }
+
+    const favRecipe = (item) => {
+        let filteredItems = favItems.filter(recipe => recipe._id !== item._id)
+        favItems = favItems.filter(recipe => recipe._id === item._id).length === 0 ? [...favItems, item] : filteredItems
+        localStorage.setItem("fav", JSON.stringify(favItems))
+        setIsFavRecipe(pre => !pre)
     }
 
     return (
@@ -37,7 +48,7 @@ export default function RecipeItems() {
                                         <div className="timer"><BsFillStopwatchFill />{item.time}</div>
                                         {
                                             !path ? (
-                                                <FaHeart />
+                                                <FaHeart onClick={() => favRecipe(item)} style={{color: (favItems.some(res => res._id === item._id)) ? "red" : ""}} />
                                             ) : (
                                                 <div className="action">
                                                     <Link to={`/editRecipe/${item._id}`}
