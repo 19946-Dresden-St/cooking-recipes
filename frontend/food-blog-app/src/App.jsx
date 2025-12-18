@@ -1,5 +1,4 @@
 import React from 'react'
-import './App.css'
 import { API_BASE_URL } from "./apiBase";
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import Home from './pages/Home.jsx'

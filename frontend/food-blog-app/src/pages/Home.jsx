@@ -24,10 +24,10 @@ export default function Home() {
 
     return (
         <>
-            <section className="home">
+            <section className="">
                 <div className="left">
-                    <h1>Food Recipe</h1>
-                    <h5>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ad commodi cumque dolores exercitationem fuga harum iusto laudantium magnam minima modi natus odit pariatur, quibusdam sunt tenetur voluptate, voluptatum. Est, provident.</h5>
+                    <h1 className="">Food Recipe</h1>
+                    <h5 className="text-red-400">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ad commodi cumque dolores exercitationem fuga harum iusto laudantium magnam minima modi natus odit pariatur, quibusdam sunt tenetur voluptate, voluptatum. Est, provident.</h5>
                     <button onClick={addRecipe} >Share your recipe</button>
                 </div>
                 <div className="right">
