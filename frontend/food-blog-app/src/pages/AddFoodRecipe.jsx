@@ -2,8 +2,12 @@ import React from 'react'
 import axios from "axios";
 import {useNavigate} from "react-router-dom";
 import {API_BASE_URL} from "../apiBase.js";
+import usePageTitle from "../hooks/usePageTitle.js";
 
 export default function AddFoodRecipe() {
+
+    usePageTitle("Qu'est-ce qu'on mange ? | Ajouter une recette");
+
     const [recipeData, setRecipeData] = React.useState({})
     const navigate = useNavigate();
 

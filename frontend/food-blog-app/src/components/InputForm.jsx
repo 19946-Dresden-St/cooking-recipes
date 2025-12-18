@@ -1,12 +1,15 @@
 import React, { useState } from 'react'
 import axios from 'axios'
 import {API_BASE_URL} from "../apiBase.js";
+import usePageTitle from "../hooks/usePageTitle.js";
 
 export default function InputForm({setIsOpen}) {
     const [email,setEmail]=useState("")
     const [password,setPassword]=useState("")
     const [isSignUp,setIsSignUp]=useState(false)
     const [error,setError]=useState("")
+
+    usePageTitle("Qu'est-ce qu'on mange ? | Connexion / Inscription");
 
     const handleOnSubmit=async(e)=>{
         e.preventDefault()

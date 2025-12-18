@@ -1,4 +1,5 @@
 import React from 'react'
+import usePageTitle from "../hooks/usePageTitle.js";
 import foodRecipe from '../assets/cookies.jpeg'
 import RecipeItems from "../components/RecipeItems.jsx";
 import {useNavigate} from "react-router-dom";
@@ -6,6 +7,8 @@ import Modal from "../components/Modal.jsx";
 import InputForm from "../components/InputForm.jsx";
 
 export default function Home() {
+
+    usePageTitle("Qu'est-ce qu'on mange ? | Accueil");
 
     const navigate = useNavigate()
     const [isOpen, setIsOpen] = React.useState(false)

@@ -2,8 +2,13 @@ import React, {useEffect} from 'react'
 import axios from "axios";
 import {useNavigate, useParams} from "react-router-dom";
 import {API_BASE_URL} from "../apiBase.js";
+import usePageTitle from "../hooks/usePageTitle.js";
 
 export default function EditRecipe() {
+
+    usePageTitle("Qu'est-ce qu'on mange ? | Modifier la recette");
+
+
     const [recipeData, setRecipeData] = React.useState({})
     const navigate = useNavigate()
     const {id} = useParams()

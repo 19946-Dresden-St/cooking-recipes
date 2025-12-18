@@ -3,10 +3,14 @@ import profileImg from '../assets/profile.png'
 import food from '../assets/foodRecipe.png'
 import { useLoaderData } from 'react-router-dom'
 import {API_BASE_URL} from "../apiBase.js";
+import usePageTitle from "../hooks/usePageTitle.js";
 
 export default function RecipeDetails() {
+
     const recipe = useLoaderData()
     console.log(recipe)
+    usePageTitle(`Qu'est-ce qu'on mange ? | ${recipe?.title ?? "Recipe"}`);
+
   return (
    <>
     <div className='outer-container'>
