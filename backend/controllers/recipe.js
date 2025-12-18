@@ -1,17 +1,19 @@
-const Recipes = require("../models/recipe")
-const multer  = require('multer')
+const Recipes = require("../models/recipe");
+const multer = require("multer");
+const path = require("path");
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, './public/images')
+        cb(null, "./public/images");
     },
     filename: function (req, file, cb) {
-        const fileName = Date.now() + '-' + file.fieldname
-        cb(null, fileName)
-    }
-})
+        const ext = path.extname(file.originalname);
+        const fileName = `${Date.now()}-${file.fieldname}${ext}`;
+        cb(null, fileName);
+    },
+});
 
-const upload = multer({ storage: storage })
+const upload = multer({ storage: storage });
 
 const getRecipes = async (req, res) => {
     const recipes = await Recipes.find()

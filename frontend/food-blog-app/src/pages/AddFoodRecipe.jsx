@@ -1,6 +1,7 @@
 import React from 'react'
 import axios from "axios";
 import {useNavigate} from "react-router-dom";
+import {API_BASE_URL} from "../apiBase.js";
 
 export default function AddFoodRecipe() {
     const [recipeData, setRecipeData] = React.useState({})
@@ -14,7 +15,7 @@ export default function AddFoodRecipe() {
     const onHandleSubmit = async (e) => {
         e.preventDefault()
         console.log(recipeData)
-        await axios.post('http://localhost:5001/recipe', recipeData, {
+        await axios.post(`${API_BASE_URL}/recipe`, recipeData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 'authorization': 'bearer ' + localStorage.getItem('token')

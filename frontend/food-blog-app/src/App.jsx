@@ -1,5 +1,6 @@
 import React from 'react'
 import './App.css'
+import { API_BASE_URL } from "./apiBase";
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import Home from './pages/Home.jsx'
 import MainNavigation from "./components/MainNavigation.jsx"
@@ -10,7 +11,7 @@ import RecipeDetails from "./pages/RecipeDetails.jsx";
 
 const getAllRecipes = async () => {
     let allRecipes = []
-    await axios.get('http://localhost:5001/recipe/').then(res => {
+    await axios.get(`${API_BASE_URL}/recipe/`).then(res => {
         allRecipes = res.data
     })
     return allRecipes
@@ -28,10 +29,10 @@ const getFavRecipes = async () => {
 
 const getRecipe=async({params})=>{
     let recipe;
-    await axios.get(`http://localhost:5001/recipe/${params.id}`)
+    await axios.get(`${API_BASE_URL}/recipe/${params.id}`)
         .then(res=>recipe=res.data)
 
-    await axios.get(`http://localhost:5001/user/${recipe.createdBy}`)
+    await axios.get(`${API_BASE_URL}/user/${recipe.createdBy}`)
         .then(res=>{
             recipe={...recipe,email:res.data.email}
         })
