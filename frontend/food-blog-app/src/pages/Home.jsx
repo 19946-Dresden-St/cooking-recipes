@@ -47,7 +47,7 @@ export default function Home() {
 
                             <a
                                 href="#recipesList"
-                                className="inline-block mt-8 rounded-md bg-primary px-5 py-2.5 text-white font-semibold hover:bg-accent transition duration-300"
+                                className="btn inline-block mt-8"
                             >
                                 Découvrir les recettes
                             </a>
