@@ -3,13 +3,28 @@ import usePageTitle from "../hooks/usePageTitle.js";
 import foodRecipe from '../assets/cookies.jpeg'
 import heroImg from "../assets/heroSection.jpg";
 import RecipeItems from "../components/RecipeItems.jsx";
-import {NavLink, useNavigate} from "react-router-dom";
+import {NavLink, useNavigate, useLocation} from "react-router-dom";
 import Modal from "../components/Modal.jsx";
 import InputForm from "../components/InputForm.jsx";
+import { useEffect } from "react";
+
 
 export default function Home() {
 
     usePageTitle("Qu'est-ce qu'on mange ? | Accueil");
+
+    const location = useLocation();
+
+    useEffect(() => {
+        if (location.hash) {
+            const id = location.hash.replace("#", "");
+            const element = document.getElementById(id);
+
+            if (element) {
+                element.scrollIntoView({ behavior: "smooth" });
+            }
+        }
+    }, [location]);
 
     const navigate = useNavigate()
     const [isOpen, setIsOpen] = React.useState(false)
@@ -38,7 +53,7 @@ export default function Home() {
                     <div className="w-full px-6 md:px-12">
                         <div className="max-w-xl">
                             <h1 className="text-white">
-                                Repas de merde !
+                                Repas de Merde !
                             </h1>
 
                             <h2 className="mt-4 text-lg md:text-2xl font-semibold text-white/90">

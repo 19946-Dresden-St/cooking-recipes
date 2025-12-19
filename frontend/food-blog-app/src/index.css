@@ -23,11 +23,11 @@
     }
 
     .btn-primary {
-        @apply font-semibold bg-primary hover:bg-accent text-white rounded-md px-5 py-2.5 hover:cursor-pointer transition duration-300
+        @apply font-semibold bg-primary hover:bg-accent text-white rounded-md px-5 py-2.5 hover:cursor-pointer transition duration-600
     }
 
     .btn-secondary {
-        @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-5 py-2.5 text-sm hover:cursor-pointer transition duration-300
+        @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-5 py-2.5 text-sm hover:cursor-pointer transition duration-600
     }
 
     .input {

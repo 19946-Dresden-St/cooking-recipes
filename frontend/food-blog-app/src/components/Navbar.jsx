@@ -45,7 +45,7 @@ export default function Navbar() {
                         to="/"
                         className="text-lg font-extrabold text-primary hover:opacity-80 transition"
                     >
-                        Repas de merde !
+                        Repas de Merde
                     </NavLink>
 
                     <ul className="hidden md:flex items-center gap-4">
