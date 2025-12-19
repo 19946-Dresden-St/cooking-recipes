@@ -74,9 +74,20 @@ export default function Home() {
                 )
             }
 
-            <div id="recipesList" className="recipe">
-                <RecipeItems />
-            </div>
+            <section id="recipesList" className="bg-secondary py-16">
+                <div className="mx-auto max-w-6xl px-4">
+
+                    <h2 className="mb-10">
+                        <span className="relative inline-block">
+                            Toutes les recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
+                    </h2>
+
+                    <RecipeItems />
+                </div>
+            </section>
+
         </>
     )
 }

@@ -41,4 +41,8 @@
     h1 {
         @apply text-4xl md:text-5xl font-extrabold;
     }
+
+    h2 {
+        @apply text-primary text-3xl md:text-4xl font-extrabold;
+    }
 }
