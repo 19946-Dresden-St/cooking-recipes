@@ -21,6 +21,10 @@
         @apply font-semibold text-white bg-primary rounded-sm transition duration-300 px-4 py-1.5;
     }
 
+    html {
+        @apply scroll-smooth;
+    }
+
     h1 {
         @apply text-4xl md:text-5xl font-extrabold;
     }

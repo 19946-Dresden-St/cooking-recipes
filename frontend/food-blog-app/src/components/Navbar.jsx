@@ -41,9 +41,12 @@ export default function Navbar() {
         <>
             <header className="sticky top-0 z-20 bg-white shadow-sm">
                 <div className="flex items-center justify-between px-4 py-3">
-                    <h2 className="text-lg font-extrabold text-primary">
+                    <NavLink
+                        to="/"
+                        className="text-lg font-extrabold text-primary hover:opacity-80 transition"
+                    >
                         Repas de merde !
-                    </h2>
+                    </NavLink>
 
                     <ul className="hidden md:flex items-center gap-4">
                         <li>
@@ -57,7 +60,6 @@ export default function Navbar() {
                                 Accueil
                             </NavLink>
                         </li>
-
                         <li>
                             <NavLink
                                 to="/myRecipe"
@@ -69,7 +71,6 @@ export default function Navbar() {
                                 Mes recettes
                             </NavLink>
                         </li>
-
                         <li>
                             <NavLink
                                 to="/favRecipe"
@@ -81,7 +82,6 @@ export default function Navbar() {
                                 Mes Favoris
                             </NavLink>
                         </li>
-
                         <li>
                             <button
                                 onClick={checkLogin}

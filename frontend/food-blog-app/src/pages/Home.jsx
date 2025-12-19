@@ -1,8 +1,9 @@
 import React from 'react'
 import usePageTitle from "../hooks/usePageTitle.js";
 import foodRecipe from '../assets/cookies.jpeg'
+import heroImg from "../assets/heroSection.jpg";
 import RecipeItems from "../components/RecipeItems.jsx";
-import {useNavigate} from "react-router-dom";
+import {NavLink, useNavigate} from "react-router-dom";
 import Modal from "../components/Modal.jsx";
 import InputForm from "../components/InputForm.jsx";
 
@@ -24,6 +25,36 @@ export default function Home() {
 
     return (
         <>
+            <section className="relative h-screen w-screen overflow-hidden">
+                <img
+                    src={heroImg}
+                    alt="Hero food"
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+
+                <div className="absolute inset-0 bg-black/35" />
+
+                <div className="relative z-10 flex h-full items-center">
+                    <div className="w-full px-6 md:px-12">
+                        <div className="max-w-xl">
+                            <h1 className="text-white">
+                                Repas de merde !
+                            </h1>
+
+                            <h2 className="mt-4 text-lg md:text-2xl font-semibold text-white/90">
+                                Des recettes simples, rapides, et (vraiment) bonnes.
+                            </h2>
+
+                            <a
+                                href="#recipesList"
+                                className="inline-block mt-8 rounded-md bg-primary px-5 py-2.5 text-white font-semibold hover:bg-accent transition duration-300"
+                            >
+                                Découvrir les recettes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
             <section className="">
                 <div className="left">
                     <h1 className="">Food Recipe</h1>
@@ -34,9 +65,6 @@ export default function Home() {
                     <img src={foodRecipe} width="320px" height="300px" alt="cookies picture"></img>
                 </div>
             </section>
-            <div className="bg">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="#D4F6E8" fillOpacity="1" d="M0,128L30,133.3C60,139,120,149,180,133.3C240,117,300,75,360,69.3C420,64,480,96,540,128C600,160,660,192,720,192C780,192,840,160,900,160C960,160,1020,192,1080,186.7C1140,181,1200,139,1260,138.7C1320,139,1380,181,1410,202.7L1440,224L1440,320L1410,320C1380,320,1320,320,1260,320C1200,320,1140,320,1080,320C1020,320,960,320,900,320C840,320,780,320,720,320C660,320,600,320,540,320C480,320,420,320,360,320C300,320,240,320,180,320C120,320,60,320,30,320L0,320Z"></path></svg>
-            </div>
 
             {
                 isOpen && (
@@ -46,7 +74,7 @@ export default function Home() {
                 )
             }
 
-            <div className="recipe">
+            <div id="recipesList" className="recipe">
                 <RecipeItems />
             </div>
         </>
