@@ -89,7 +89,7 @@ export default function Home() {
                 )
             }
 
-            <section id="recipesList" className="bg-secondary py-16">
+            <section id="recipesList" className="scroll-mt-24 bg-secondary py-16">
                 <div className="mx-auto max-w-6xl px-4">
 
                     <h2 className="mb-10">
