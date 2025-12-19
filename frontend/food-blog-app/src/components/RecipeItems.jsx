@@ -60,20 +60,18 @@ export default function RecipeItems() {
                             loading="lazy"
                         />
 
-                        {/* Content */}
                         <div className="p-4">
                             <h3 className="text-primary text-lg font-extrabold truncate">
                                 {item.title}
                             </h3>
 
                             <div className="mt-4 flex items-center justify-between">
-                                {/* Time chip */}
+
                                 <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-zinc-800">
                                     <BsFillStopwatchFill />
                                     <span>{item.time}</span>
                                 </div>
 
-                                {/* Actions */}
                                 {!path ? (
                                     <motion.button
                                         whileTap={{ scale: 1.3 }}
