@@ -47,7 +47,7 @@ export default function Home() {
 
                             <a
                                 href="#recipesList"
-                                className="btn inline-block mt-8"
+                                className="btn-primary inline-block mt-8"
                             >
                                 Découvrir les recettes
                             </a>

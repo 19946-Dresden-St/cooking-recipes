@@ -10,6 +10,7 @@
     --color-primary: #9D174D;
     --color-accent: oklch(40.8% 0.153 2.432);
     --color-secondary: oklch(98% 0.016 73.684);
+    --color-secondary-accent: oklch(95.4% 0.038 75.164);
 }
 
 @layer base {
@@ -21,8 +22,16 @@
         @apply font-semibold text-white bg-primary rounded-sm transition duration-300 px-4 py-1.5;
     }
 
-    .btn {
-        @apply font-semibold bg-primary hover:bg-accent text-white rounded-md px-5 py-2.5 transition duration-300
+    .btn-primary {
+        @apply font-semibold bg-primary hover:bg-accent text-white rounded-md px-5 py-2.5 hover:cursor-pointer transition duration-300
+    }
+
+    .btn-secondary {
+        @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-5 py-2.5 text-sm hover:cursor-pointer transition duration-300
+    }
+
+    .input {
+        @apply w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none hover:border-primary/40 focus:ring-2 focus:ring-primary/40 transition duration-300;
     }
 
     html {
