@@ -30,8 +30,19 @@
         @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-5 py-2.5 text-sm hover:cursor-pointer transition duration-600
     }
 
-    .input {
-        @apply w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none hover:border-primary/40 focus:ring-2 focus:ring-primary/40 transition duration-300;
+    .input,
+    .textarea {
+        @apply w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none
+        focus:ring-2 focus:ring-primary/40 transition duration-300;
+    }
+
+    .textarea {
+        @apply resize-none;
+    }
+
+    .input:hover,
+    .textarea:hover {
+        @apply border-primary/40;
     }
 
     html {
