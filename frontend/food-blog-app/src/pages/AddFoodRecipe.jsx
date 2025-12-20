@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
+import toast from "react-hot-toast";
 
 export default function AddFoodRecipe() {
     usePageTitle("Qu'est-ce qu'on mange ? | Ajouter une recette");
@@ -31,7 +32,8 @@ export default function AddFoodRecipe() {
                     authorization: "bearer " + localStorage.getItem("token"),
                 },
             })
-            .then(() => navigate("/"));
+            toast.success("Recette ajoutée avec succès !");
+            navigate("/myRecipe");
     };
 
     return (
@@ -133,7 +135,7 @@ export default function AddFoodRecipe() {
 
                     <button
                         type="submit"
-                        className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-90 transition"
+                        className="w-full btn-primary"
                     >
                         Ajouter la recette
                     </button>
