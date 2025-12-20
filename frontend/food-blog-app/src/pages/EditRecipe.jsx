@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
+import toast from "react-hot-toast";
 
 export default function EditRecipe() {
     usePageTitle("Qu'est-ce qu'on mange ? | Modifier la recette");
@@ -48,7 +49,6 @@ export default function EditRecipe() {
     const onHandleSubmit = async (e) => {
         e.preventDefault();
 
-        // Convert ingredients string -> array (comme ton backend s'y attend)
         const payload = {
             ...recipeData,
             ingredients: recipeData.ingredients
@@ -64,7 +64,8 @@ export default function EditRecipe() {
                     authorization: "bearer " + localStorage.getItem("token"),
                 },
             })
-            .then(() => navigate("/"));
+            toast.success("Recette modifiée avec succès !");
+            navigate("/myRecipe");
     };
 
     return (
@@ -79,7 +80,7 @@ export default function EditRecipe() {
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
-                        {/* COLONNE 1 — Infos */}
+
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-5">
                             <h2 className="text-primary text-xl font-extrabold">Infos</h2>
 
@@ -127,7 +128,6 @@ export default function EditRecipe() {
                             </div>
                         </div>
 
-                        {/* COLONNE 2 — Ingrédients */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Ingrédients
@@ -149,7 +149,6 @@ export default function EditRecipe() {
                             </p>
                         </div>
 
-                        {/* COLONNE 3 — Instructions */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Instructions
@@ -167,10 +166,9 @@ export default function EditRecipe() {
                         </div>
                     </div>
 
-                    {/* SUBMIT */}
                     <button
                         type="submit"
-                        className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-90 transition"
+                        className="w-full btn-primary"
                     >
                         Enregistrer les modifications
                     </button>
