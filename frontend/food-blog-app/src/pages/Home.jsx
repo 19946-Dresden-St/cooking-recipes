@@ -90,7 +90,7 @@ export default function Home() {
             }
 
             <section id="recipesList" className="scroll-mt-24 bg-secondary py-16">
-                <div className="mx-auto max-w-6xl px-4">
+                <div className="mx-auto container">
 
                     <h2 className="mb-10">
                         <span className="relative inline-block">
