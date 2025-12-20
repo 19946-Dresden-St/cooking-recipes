@@ -26,23 +26,44 @@ const getRecipe = async (req, res) => {
 }
 
 const addRecipe = async (req, res) => {
-    console.log(req.user)
-    const { title, ingredients, instructions, time } = req.body
+    try {
+        const { title, ingredients, instructions, time } = req.body;
 
-    if(!title || !ingredients || !instructions){
-        res.json({message: "Required fields cannot be empty"})
+        if (!title || !ingredients || !instructions || !time) {
+            return res.status(400).json({
+                message:
+                    "Le nom, le temps, les ingrédients et les instructions sont requis.",
+            });
+        }
+
+        const parsedTime = Number(time);
+
+        if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
+            return res.status(400).json({
+                message: "Le temps doit être un entier positif.",
+            });
+        }
+
+        const coverImage = req.file
+            ? req.file.filename
+            : "heroSection.jpg";
+
+        const newRecipe = await Recipes.create({
+            title,
+            ingredients,
+            instructions,
+            time: parsedTime,
+            coverImage,
+            createdBy: req.user.id,
+        });
+
+        return res.status(201).json(newRecipe);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
     }
+};
 
-    const newRecipe = await Recipes.create({
-        title,
-        ingredients,
-        instructions,
-        time,
-        coverImage: req.file.filename,
-        createdBy: req.user.id
-    })
-    return res.json(newRecipe)
-}
 
 const editRecipe = async (req, res) => {
     const { title, ingredients, instructions, time } = req.body
