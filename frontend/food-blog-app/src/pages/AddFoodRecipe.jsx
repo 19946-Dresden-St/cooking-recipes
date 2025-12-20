@@ -46,10 +46,10 @@ export default function AddFoodRecipe() {
                 </h2>
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
-                    {/* GRILLE 3 COLONNES */}
+
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
 
-                        {/* COLONNE 1 — Infos */}
+
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-5">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Infos
@@ -96,7 +96,6 @@ export default function AddFoodRecipe() {
                             </div>
                         </div>
 
-                        {/* COLONNE 2 — Ingrédients */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Ingrédients
@@ -116,7 +115,6 @@ export default function AddFoodRecipe() {
                             </p>
                         </div>
 
-                        {/* COLONNE 3 — Instructions */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Instructions
@@ -133,7 +131,6 @@ export default function AddFoodRecipe() {
                         </div>
                     </div>
 
-                    {/* SUBMIT */}
                     <button
                         type="submit"
                         className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:opacity-90 transition"
