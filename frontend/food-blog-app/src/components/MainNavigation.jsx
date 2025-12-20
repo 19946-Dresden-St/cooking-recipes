@@ -9,12 +9,13 @@ export default function MainNavigation() {
 
     return (
         <>
-            <div className="min-h-screen bg-white text-zinc-800">
+            <div className="min-h-screen flex flex-col bg-white text-zinc-800">
                 <Navbar />
 
                 <AnimatePresence mode="wait">
                     <motion.main
                         key={location.pathname}
+                        className="flex-1 bg-secondary"
                         initial={{ opacity: 0, scale: 0.98 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.98 }}

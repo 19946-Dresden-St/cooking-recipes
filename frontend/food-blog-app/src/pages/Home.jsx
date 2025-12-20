@@ -70,16 +70,6 @@ export default function Home() {
                     </div>
                 </div>
             </section>
-            <section className="">
-                <div className="left">
-                    <h1 className="">Food Recipe</h1>
-                    <h5 className="text-red-400">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Ad commodi cumque dolores exercitationem fuga harum iusto laudantium magnam minima modi natus odit pariatur, quibusdam sunt tenetur voluptate, voluptatum. Est, provident.</h5>
-                    <button onClick={addRecipe} >Share your recipe</button>
-                </div>
-                <div className="right">
-                    <img src={foodRecipe} width="320px" height="300px" alt="cookies picture"></img>
-                </div>
-            </section>
 
             {
                 isOpen && (
