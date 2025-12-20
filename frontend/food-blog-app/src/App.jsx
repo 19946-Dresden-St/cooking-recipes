@@ -7,6 +7,9 @@ import axios from "axios"
 import AddFoodRecipe from "./pages/AddFoodRecipe.jsx";
 import EditRecipe from "./pages/EditRecipe.jsx";
 import RecipeDetails from "./pages/RecipeDetails.jsx";
+import MyRecipes from "./pages/MyRecipes.jsx";
+import FavRecipes from "./pages/FavRecipes.jsx";
+
 
 const getAllRecipes = async () => {
     let allRecipes = []
@@ -17,13 +20,14 @@ const getAllRecipes = async () => {
 }
 
 const getMyRecipes = async () => {
-    let user = JSON.parse(localStorage.getItem("user"))
-    let allRecipes = await getAllRecipes()
-    return allRecipes.filter(item => item.createdBy === user._id)
-}
+    let user = JSON.parse(localStorage.getItem("user"));
+    if (!user?._id) return [];
+    let allRecipes = await getAllRecipes();
+    return allRecipes.filter((item) => item.createdBy === user._id);
+};
 
 const getFavRecipes = async () => {
-    return JSON.parse(localStorage.getItem("fav"))
+    return JSON.parse(localStorage.getItem("fav")) ?? [];
 }
 
 const getRecipe=async({params})=>{
@@ -42,8 +46,8 @@ const getRecipe=async({params})=>{
 const router = createBrowserRouter([
     { path: "/", element: <MainNavigation />,  children: [
         { path: "/", element: <Home />, loader: getAllRecipes },
-        { path: "/myRecipe", element: <Home />, loader: getMyRecipes },
-        { path: "/favRecipe", element: <Home />, loader: getFavRecipes },
+        { path: "/myRecipe", element: <MyRecipes />, loader: getMyRecipes },
+        { path: "/favRecipe", element: <FavRecipes />, loader: getFavRecipes },
         { path: "/addRecipe", element: <AddFoodRecipe /> },
         { path: "/editRecipe/:id", element: <EditRecipe /> },
         {path:"/recipe/:id",element:<RecipeDetails/>,loader:getRecipe}
