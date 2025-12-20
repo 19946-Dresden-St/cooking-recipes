@@ -106,7 +106,7 @@ export default function AddFoodRecipe() {
                                 rows="12"
                                 onChange={onHandleChange}
                                 placeholder="Sépare les ingrédients par des virgules"
-                                className="w-full resize-none rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                                className="textarea"
                                 required
                             />
 
@@ -125,7 +125,7 @@ export default function AddFoodRecipe() {
                                 rows="12"
                                 onChange={onHandleChange}
                                 placeholder="Explique les étapes clairement"
-                                className="w-full resize-none rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                                className="textarea"
                                 required
                             />
                         </div>
