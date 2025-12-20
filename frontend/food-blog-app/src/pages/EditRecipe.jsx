@@ -57,16 +57,28 @@ export default function EditRecipe() {
                 .filter(Boolean),
         };
 
-        await axios
-            .put(`${API_BASE_URL}/recipe/${id}`, payload, {
+        const toastId = toast.loading("Enregistrement des modifications…");
+
+        try {
+            await axios.put(`${API_BASE_URL}/recipe/${id}`, payload, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                     authorization: "bearer " + localStorage.getItem("token"),
                 },
-            })
-            toast.success("Recette modifiée avec succès !");
+            });
+
+            toast.success("Recette modifiée avec succès !", { id: toastId });
             navigate("/myRecipe");
+        } catch (error) {
+            toast.error(
+                error?.response?.data?.message ||
+                "Une erreur est survenue lors de la modification.",
+                { id: toastId }
+            );
+        }
     };
+
+
 
     return (
         <section className="bg-secondary py-10 md:py-14">

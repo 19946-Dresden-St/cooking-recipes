@@ -25,16 +25,28 @@ export default function AddFoodRecipe() {
     const onHandleSubmit = async (e) => {
         e.preventDefault();
 
-        await axios
-            .post(`${API_BASE_URL}/recipe`, recipeData, {
+        const toastId = toast.loading("Ajout de la recette…");
+
+        try {
+            await axios.post(`${API_BASE_URL}/recipe`, recipeData, {
                 headers: {
                     "Content-Type": "multipart/form-data",
                     authorization: "bearer " + localStorage.getItem("token"),
                 },
-            })
-            toast.success("Recette ajoutée avec succès !");
+            });
+
+            toast.success("Recette ajoutée avec succès !", { id: toastId });
             navigate("/myRecipe");
+        } catch (error) {
+            toast.error(
+                error?.response?.data?.message ||
+                "Une erreur est survenue lors de l’ajout de la recette.",
+                { id: toastId }
+            );
+        }
     };
+
+
 
     return (
         <section className="bg-secondary py-10 md:py-14">
