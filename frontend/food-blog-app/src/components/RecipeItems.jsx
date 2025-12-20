@@ -49,7 +49,7 @@ export default function RecipeItems() {
                         onClick={() => navigate(`/recipe/${item._id}`)}
                         className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition duration-300"
                     >
-                        {/* Image */}
+
                         <img
                             src={`${API_BASE_URL}/images/${item.coverImage}`}
                             alt={item.title}
@@ -69,7 +69,7 @@ export default function RecipeItems() {
 
                                 <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-sm font-semibold text-zinc-800">
                                     <BsFillStopwatchFill />
-                                    <span>{item.time}</span>
+                                    <span>{item.time} mins</span>
                                 </div>
 
                                 {!path ? (
