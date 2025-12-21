@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import Modal from "./Modal.jsx";
 import InputForm from "./InputForm.jsx";
 import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const navigate = useNavigate();
 
     let token = localStorage.getItem("token");
     const [isLogin, setIsLogin] = useState(token ? true : false);
@@ -21,6 +23,7 @@ export default function Navbar() {
             localStorage.removeItem("user");
             setIsLogin(true);
             setIsMenuOpen(false);
+            navigate("/", { replace: true });
         } else {
             setIsOpen(true);
             setIsMenuOpen(false);
