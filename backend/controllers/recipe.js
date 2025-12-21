@@ -27,7 +27,7 @@ const getRecipe = async (req, res) => {
 
 const addRecipe = async (req, res) => {
     try {
-        const { title, ingredients, instructions, time } = req.body;
+        const { title, ingredients, instructions, time, category } = req.body;
 
         if (!title || !ingredients || !instructions || !time) {
             return res.status(400).json({
@@ -53,6 +53,7 @@ const addRecipe = async (req, res) => {
             ingredients,
             instructions,
             time: parsedTime,
+            category: category || "plat",
             coverImage,
             createdBy: req.user.id,
         });
@@ -64,23 +65,24 @@ const addRecipe = async (req, res) => {
     }
 };
 
-
 const editRecipe = async (req, res) => {
-    const { title, ingredients, instructions, time } = req.body
-    let recipe = await Recipes.findById(req.params.id)
     try {
-        if (recipe) {
-            let coverImage = req.file?.filename ? req.file.filename : recipe.coverImage
-            await Recipes.findByIdAndUpdate(
-                req.params.id, {...req.body, coverImage}, { new: true }
-            )
-            res.json({title, ingredients, instructions, time})
-        }
+        const recipe = await Recipes.findById(req.params.id);
+        if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+
+        const coverImage = req.file?.filename ? req.file.filename : recipe.coverImage;
+
+        const updated = await Recipes.findByIdAndUpdate(
+            req.params.id,
+            { ...req.body, coverImage },
+            { new: true, runValidators: true }
+        );
+
+        return res.json(updated);
+    } catch (err) {
+        return res.status(400).json({ message: "error" });
     }
-    catch (err) {
-        return res.status(404).json({ message: "error" })
-    }
-}
+};
 
 const deleteRecipe = async (req, res) => {
     try {

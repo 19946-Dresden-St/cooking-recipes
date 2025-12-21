@@ -24,7 +24,9 @@ export default function RecipeItems() {
     }, [recipes]);
 
     const onDelete = async (id) => {
-        await axios.delete(`${API_BASE_URL}/recipe/${id}`).then((res) => console.log(res));
+        await axios
+            .delete(`${API_BASE_URL}/recipe/${id}`)
+            .then((res) => console.log(res));
         setAllRecipes((recipes) => recipes.filter((recipe) => recipe._id !== id));
         let filteredItems = favItems.filter((recipe) => recipe._id !== id);
         localStorage.setItem("fav", JSON.stringify(filteredItems));
@@ -40,10 +42,32 @@ export default function RecipeItems() {
         setIsFavRecipe((pre) => !pre);
     };
 
+    // ✅ Helpers pour badge dynamique
+    const getCategoryLabel = (category) => {
+        const map = {
+            apero: "Apéro",
+            entree: "Entrée",
+            plat: "Plat",
+            dessert: "Dessert",
+            boisson: "Boisson",
+            brunch: "Brunch",
+        };
+        return map[category] ?? "Plat";
+    };
+
+    const getBadgeClass = (category) => {
+        const safe = (category || "entree").toLowerCase().trim();
+        return `badge-${safe}`;
+    };
+
     return (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {allRecipes?.map((item) => {
                 const isFav = favItems.some((res) => res._id === item._id);
+
+                const categoryValue = item?.category ?? "entree";
+                const categoryLabel = getCategoryLabel(categoryValue);
+                const badgeClass = getBadgeClass(categoryValue);
 
                 return (
                     <article
@@ -51,7 +75,6 @@ export default function RecipeItems() {
                         onClick={() => navigate(`/recipe/${item._id}`)}
                         className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition duration-300"
                     >
-
                         <div className="relative">
                             <img
                                 src={`${API_BASE_URL}/images/${item.coverImage}`}
@@ -82,7 +105,6 @@ export default function RecipeItems() {
                         </div>
 
                         <div className="p-4 space-y-3">
-
                             <h3 className="text-primary text-lg font-extrabold truncate">
                                 {item.title}
                             </h3>
@@ -91,12 +113,9 @@ export default function RecipeItems() {
 
                             <div className="flex items-center justify-between">
 
-                                <span className="badge-entree">
-                                    Entrée
-                                </span>
+                                <span className={badgeClass}>{categoryLabel}</span>
 
                                 <div className="flex items-start gap-8 text-sm text-zinc-500">
-
                                     <div className="flex flex-col items-start leading-tight gap-1">
                                         <div className="flex items-center gap-1">
                                             <BsFillStopwatchFill />
@@ -104,38 +123,26 @@ export default function RecipeItems() {
                                                 {item.time}
                                             </span>
                                         </div>
-                                        <span className="text-xs text-zinc-400">
-                                            Minutes
-                                        </span>
+                                        <span className="text-xs text-zinc-400">Minutes</span>
                                     </div>
 
                                     <div className="flex flex-col items-start leading-tight gap-1">
                                         <div className="flex items-center gap-1">
                                             <FaListAlt />
-                                            <span className="font-semibold text-primary">
-                                                5
-                                            </span>
+                                            <span className="font-semibold text-primary">5</span>
                                         </div>
-                                        <span className="text-xs text-zinc-400">
-                                            Ingrédients
-                                        </span>
+                                        <span className="text-xs text-zinc-400">Ingrédients</span>
                                     </div>
 
                                     <div className="flex flex-col items-start leading-tight gap-1">
                                         <div className="flex items-center gap-1">
                                             <PiPersonArmsSpreadFill />
-                                            <span className="font-semibold text-primary">
-                                                4
-                                            </span>
+                                            <span className="font-semibold text-primary">4</span>
                                         </div>
-                                        <span className="text-xs text-zinc-400">
-                                            Personnes
-                                        </span>
+                                        <span className="text-xs text-zinc-400">Personnes</span>
                                     </div>
-
                                 </div>
                             </div>
-
 
                             {path && (
                                 <div className="flex justify-end gap-2 pt-2">
@@ -168,5 +175,4 @@ export default function RecipeItems() {
             })}
         </div>
     );
-
 }

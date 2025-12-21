@@ -8,7 +8,9 @@ import toast from "react-hot-toast";
 export default function AddFoodRecipe() {
     usePageTitle("Qu'est-ce qu'on mange ? | Ajouter une recette");
 
-    const [recipeData, setRecipeData] = React.useState({});
+    const [recipeData, setRecipeData] = React.useState({
+        category: "plat",
+    });
     const navigate = useNavigate();
 
     const onHandleChange = (e) => {
@@ -81,6 +83,23 @@ export default function AddFoodRecipe() {
                                     className="input"
                                     required
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-zinc-800">Catégorie</label>
+                                <select
+                                    name="category"
+                                    onChange={onHandleChange}
+                                    className="input"
+                                    defaultValue="plat"
+                                >
+                                    <option value="apero">Apéro</option>
+                                    <option value="entree">Entrée</option>
+                                    <option value="plat">Plat</option>
+                                    <option value="dessert">Dessert</option>
+                                    <option value="boisson">Boisson</option>
+                                    <option value="brunch">Brunch</option>
+                                </select>
                             </div>
 
                             <div className="space-y-2">

@@ -11,6 +11,7 @@ export default function EditRecipe() {
     const [recipeData, setRecipeData] = React.useState({
         title: "",
         time: "",
+        category: "plat",
         ingredients: "",
         instructions: "",
         file: null,
@@ -25,6 +26,7 @@ export default function EditRecipe() {
                 const res = response.data;
                 setRecipeData({
                     title: res.title ?? "",
+                    category: res.category ?? "plat",
                     ingredients: (res.ingredients ?? []).join(", "),
                     instructions: res.instructions ?? "",
                     time: res.time ?? "",
@@ -49,20 +51,28 @@ export default function EditRecipe() {
     const onHandleSubmit = async (e) => {
         e.preventDefault();
 
-        const payload = {
-            ...recipeData,
-            ingredients: recipeData.ingredients
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-        };
+        const ingredientsArray = recipeData.ingredients
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        const formData = new FormData();
+        formData.append("title", recipeData.title);
+        formData.append("time", recipeData.time);
+        formData.append("category", recipeData.category);
+        formData.append("instructions", recipeData.instructions);
+
+        ingredientsArray.forEach((ing) => formData.append("ingredients", ing));
+
+        if (recipeData.file) {
+            formData.append("file", recipeData.file);
+        }
 
         const toastId = toast.loading("Enregistrement des modifications…");
 
         try {
-            await axios.put(`${API_BASE_URL}/recipe/${id}`, payload, {
+            await axios.put(`${API_BASE_URL}/recipe/${id}`, formData, {
                 headers: {
-                    "Content-Type": "multipart/form-data",
                     authorization: "bearer " + localStorage.getItem("token"),
                 },
             });
@@ -78,8 +88,6 @@ export default function EditRecipe() {
         }
     };
 
-
-
     return (
         <section className="bg-secondary py-10 md:py-14">
             <div className="container">
@@ -92,7 +100,6 @@ export default function EditRecipe() {
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
-
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-5">
                             <h2 className="text-primary text-xl font-extrabold">Infos</h2>
 
@@ -108,6 +115,25 @@ export default function EditRecipe() {
                                     value={recipeData.title}
                                     required
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-zinc-800">
+                                    Catégorie
+                                </label>
+                                <select
+                                    name="category"
+                                    className="input"
+                                    onChange={onHandleChange}
+                                    value={recipeData.category}
+                                >
+                                    <option value="apero">Apéro</option>
+                                    <option value="entree">Entrée</option>
+                                    <option value="plat">Plat</option>
+                                    <option value="dessert">Dessert</option>
+                                    <option value="boisson">Boisson</option>
+                                    <option value="brunch">Brunch</option>
+                                </select>
                             </div>
 
                             <div className="space-y-2">
@@ -178,10 +204,7 @@ export default function EditRecipe() {
                         </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        className="w-full btn-primary"
-                    >
+                    <button type="submit" className="w-full btn-primary">
                         Enregistrer les modifications
                     </button>
                 </form>
