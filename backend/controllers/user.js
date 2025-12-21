@@ -38,10 +38,15 @@ const userSignUp = async (req, res) => {
             username: normalized,
             email: email ? String(email).trim().toLowerCase() : undefined,
             password: hashPwd,
+            role: 1,
         });
 
         const token = jwt.sign(
-            { username: newUser.username, id: newUser._id },
+            {
+                id: newUser._id,
+                username: newUser.username,
+                role: newUser.role,
+            },
             process.env.SECRET_KEY,
             { expiresIn: "24h" }
         );
@@ -51,8 +56,10 @@ const userSignUp = async (req, res) => {
             user: {
                 _id: newUser._id,
                 username: newUser.username,
+                role: newUser.role,
             },
         });
+
     } catch (error) {
         return res.status(500).json({ error: "Signup error" });
     }
@@ -86,18 +93,25 @@ const userLogin = async (req, res) => {
         }
 
         const token = jwt.sign(
-            { username: user.username, id: user._id },
+            {
+                id: user._id,
+                username: newUser.username,
+                role: newUser.role,
+            },
             process.env.SECRET_KEY,
             { expiresIn: "24h" }
         );
+
 
         return res.status(200).json({
             token,
             user: {
                 _id: user._id,
                 username: user.username,
+                role: user.role,
             },
         });
+
     } catch (error) {
         return res.status(500).json({ error: "Login error" });
     }
