@@ -69,6 +69,13 @@ export default function RecipeItems() {
                 const categoryLabel = getCategoryLabel(categoryValue);
                 const badgeClass = getBadgeClass(categoryValue);
 
+                const ingredientsCount = Array.isArray(item.ingredients)
+                    ? item.ingredients.length
+                    : 0;
+
+                const ingredientsLabel =
+                    ingredientsCount === 1 ? "Ingrédient" : "Ingrédients";
+
                 return (
                     <article
                         key={item._id}
@@ -127,12 +134,18 @@ export default function RecipeItems() {
                                     </div>
 
                                     <div className="flex flex-col items-start leading-tight gap-1">
-                                        <div className="flex items-center gap-1">
+                                        <div className="flex items-center gap-2">
                                             <FaListAlt />
-                                            <span className="font-semibold text-primary">5</span>
+                                            <span className="font-semibold text-primary">
+                                                {ingredientsCount}
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-zinc-400">Ingrédients</span>
+                                        <span className="text-xs text-zinc-400">
+                                            {ingredientsLabel}
+                                        </span>
                                     </div>
+
+
 
                                     <div className="flex flex-col items-start leading-tight gap-1">
                                         <div className="flex items-center gap-1">
