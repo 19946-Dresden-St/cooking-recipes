@@ -11,6 +11,17 @@ import { API_BASE_URL } from "../apiBase.js";
 import placeholderImg from "../assets/heroSection.jpg";
 import { motion } from "framer-motion";
 
+const CATEGORY_MAP = {
+    apero: "Apéro",
+    entree: "Entrée",
+    plat: "Plat",
+    dessert: "Dessert",
+    boisson: "Boisson",
+    brunch: "Brunch",
+};
+
+const CATEGORY_ORDER = ["apero", "entree", "plat", "dessert", "boisson", "brunch"];
+
 export default function RecipeItems() {
     const recipes = useLoaderData();
     const [allRecipes, setAllRecipes] = useState();
@@ -18,6 +29,9 @@ export default function RecipeItems() {
     let favItems = JSON.parse(localStorage.getItem("fav")) ?? [];
     const [isFavRecipe, setIsFavRecipe] = useState(false);
     const navigate = useNavigate();
+
+    // ✅ Filtre catégorie
+    const [selectedCategory, setSelectedCategory] = useState("all");
 
     useEffect(() => {
         setAllRecipes(recipes);
@@ -44,15 +58,7 @@ export default function RecipeItems() {
 
     // ✅ Helpers pour badge dynamique
     const getCategoryLabel = (category) => {
-        const map = {
-            apero: "Apéro",
-            entree: "Entrée",
-            plat: "Plat",
-            dessert: "Dessert",
-            boisson: "Boisson",
-            brunch: "Brunch",
-        };
-        return map[category] ?? "Plat";
+        return CATEGORY_MAP[category] ?? "Plat";
     };
 
     const getBadgeClass = (category) => {
@@ -60,132 +66,176 @@ export default function RecipeItems() {
         return `badge-${safe}`;
     };
 
+    // ✅ Données filtrées
+    const filteredRecipes =
+        selectedCategory === "all"
+            ? allRecipes
+            : (allRecipes ?? []).filter(
+                (r) => (r?.category ?? "plat") === selectedCategory
+            );
+
     return (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {allRecipes?.map((item) => {
-                const isFav = favItems.some((res) => res._id === item._id);
+        <div className="space-y-6">
+            {/* ✅ Barre de tri / filtres par catégorie */}
+            <div className="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => setSelectedCategory("all")}
+                    className={[
+                        "inline-flex items-center rounded-full px-3 py-1 text-xs text-white font-semibold hover:cursor-pointer transition duration-600",
+                        selectedCategory === "all"
+                            ? "bg-primary"
+                            : "bg-primary hover:bg-accent",
+                    ].join(" ")}
+                >
+                    Toutes
+                </button>
 
-                const categoryValue = item?.category ?? "entree";
-                const categoryLabel = getCategoryLabel(categoryValue);
-                const badgeClass = getBadgeClass(categoryValue);
+                {CATEGORY_ORDER.map((cat) => {
+                    const active = selectedCategory === cat;
 
-                const ingredientsCount = Array.isArray(item.ingredients)
-                    ? item.ingredients.length
-                    : 0;
+                    return (
+                        <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setSelectedCategory(cat)}
+                            className={[
+                                getBadgeClass(cat),
+                                active ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100 hover:cursor-pointer transition duration-600",
+                            ].join(" ")}
+                            title={`Filtrer : ${getCategoryLabel(cat)}`}
+                            aria-pressed={active}
+                        >
+                            {getCategoryLabel(cat)}
+                        </button>
+                    );
+                })}
+            </div>
 
-                const ingredientsLabel =
-                    ingredientsCount === 1 ? "Ingrédient" : "Ingrédients";
+            {/* ✅ Grille recettes */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredRecipes?.map((item) => {
+                    const isFav = favItems.some((res) => res._id === item._id);
 
-                return (
-                    <article
-                        key={item._id}
-                        onClick={() => navigate(`/recipe/${item._id}`)}
-                        className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition duration-300"
-                    >
-                        <div className="relative">
-                            <img
-                                src={`${API_BASE_URL}/images/${item.coverImage}`}
-                                alt={item.title}
-                                onError={(e) => {
-                                    e.currentTarget.src = placeholderImg;
-                                }}
-                                className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                loading="lazy"
-                            />
+                    const categoryValue = item?.category ?? "entree";
+                    const categoryLabel = getCategoryLabel(categoryValue);
+                    const badgeClass = getBadgeClass(categoryValue);
 
-                            {!path && (
-                                <motion.button
-                                    whileTap={{ scale: 1.2 }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        favRecipe(item);
+                    const ingredientsCount = Array.isArray(item.ingredients)
+                        ? item.ingredients.length
+                        : 0;
+
+                    const ingredientsLabel =
+                        ingredientsCount === 1 ? "Ingrédient" : "Ingrédients";
+
+                    return (
+                        <article
+                            key={item._id}
+                            onClick={() => navigate(`/recipe/${item._id}`)}
+                            className="group overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer transition duration-300"
+                        >
+                            <div className="relative">
+                                <img
+                                    src={`${API_BASE_URL}/images/${item.coverImage}`}
+                                    alt={item.title}
+                                    onError={(e) => {
+                                        e.currentTarget.src = placeholderImg;
                                     }}
-                                    className="absolute top-3 right-3 rounded-full bg-white/90 p-2 shadow-md transition"
-                                >
-                                    <FaHeart
-                                        className={`text-lg ${
-                                            isFav ? "text-primary" : "text-zinc-400"
-                                        }`}
-                                    />
-                                </motion.button>
-                            )}
-                        </div>
+                                    className="h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    loading="lazy"
+                                />
 
-                        <div className="p-4 space-y-3">
-                            <h3 className="text-primary text-lg font-extrabold truncate">
-                                {item.title}
-                            </h3>
-
-                            <div className="h-px w-full bg-zinc-100" />
-
-                            <div className="flex items-center justify-between">
-
-                                <span className={badgeClass}>{categoryLabel}</span>
-
-                                <div className="flex items-start gap-8 text-sm text-zinc-500">
-                                    <div className="flex flex-col items-start leading-tight gap-1">
-                                        <div className="flex items-center gap-1">
-                                            <BsFillStopwatchFill />
-                                            <span className="font-semibold text-primary">
-                                                {item.time}
-                                            </span>
-                                        </div>
-                                        <span className="text-xs text-zinc-400">Minutes</span>
-                                    </div>
-
-                                    <div className="flex flex-col items-start leading-tight gap-1">
-                                        <div className="flex items-center gap-2">
-                                            <FaListAlt />
-                                            <span className="font-semibold text-primary">
-                                                {ingredientsCount}
-                                            </span>
-                                        </div>
-                                        <span className="text-xs text-zinc-400">
-                                            {ingredientsLabel}
-                                        </span>
-                                    </div>
-
-
-
-                                    <div className="flex flex-col items-start leading-tight gap-1">
-                                        <div className="flex items-center gap-1">
-                                            <PiPersonArmsSpreadFill />
-                                            <span className="font-semibold text-primary">4</span>
-                                        </div>
-                                        <span className="text-xs text-zinc-400">Personnes</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {path && (
-                                <div className="flex justify-end gap-2 pt-2">
-                                    <Link
-                                        to={`/editRecipe/${item._id}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
-                                        aria-label="Éditer"
-                                        title="Éditer"
-                                    >
-                                        <FaEdit />
-                                    </Link>
-
-                                    <button
+                                {!path && (
+                                    <motion.button
+                                        whileTap={{ scale: 1.2 }}
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            onDelete(item._id);
+                                            favRecipe(item);
                                         }}
-                                        className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
-                                        aria-label="Supprimer"
-                                        title="Supprimer"
+                                        className="absolute top-3 right-3 rounded-full bg-white/90 p-2 shadow-md transition"
                                     >
-                                        <MdDelete />
-                                    </button>
+                                        <FaHeart
+                                            className={`text-lg ${
+                                                isFav ? "text-primary" : "text-zinc-400"
+                                            }`}
+                                        />
+                                    </motion.button>
+                                )}
+                            </div>
+
+                            <div className="p-4 space-y-3">
+                                <h3 className="text-primary text-lg font-extrabold truncate">
+                                    {item.title}
+                                </h3>
+
+                                <div className="h-px w-full bg-zinc-100" />
+
+                                <div className="flex items-center justify-between">
+                                    <span className={badgeClass}>{categoryLabel}</span>
+
+                                    <div className="flex items-start gap-8 text-sm text-zinc-500">
+                                        <div className="flex flex-col items-start leading-tight gap-1">
+                                            <div className="flex items-center gap-1">
+                                                <BsFillStopwatchFill />
+                                                <span className="font-semibold text-primary">
+                          {item.time}
+                        </span>
+                                            </div>
+                                            <span className="text-xs text-zinc-400">Minutes</span>
+                                        </div>
+
+                                        <div className="flex flex-col items-start leading-tight gap-1">
+                                            <div className="flex items-center gap-2">
+                                                <FaListAlt />
+                                                <span className="font-semibold text-primary">
+                          {ingredientsCount}
+                        </span>
+                                            </div>
+                                            <span className="text-xs text-zinc-400">
+                        {ingredientsLabel}
+                      </span>
+                                        </div>
+
+                                        <div className="flex flex-col items-start leading-tight gap-1">
+                                            <div className="flex items-center gap-1">
+                                                <PiPersonArmsSpreadFill />
+                                                <span className="font-semibold text-primary">4</span>
+                                            </div>
+                                            <span className="text-xs text-zinc-400">Personnes</span>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    </article>
-                );
-            })}
+
+                                {path && (
+                                    <div className="flex justify-end gap-2 pt-2">
+                                        <Link
+                                            to={`/editRecipe/${item._id}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
+                                            aria-label="Éditer"
+                                            title="Éditer"
+                                        >
+                                            <FaEdit />
+                                        </Link>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDelete(item._id);
+                                            }}
+                                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
+                                            aria-label="Supprimer"
+                                            title="Supprimer"
+                                        >
+                                            <MdDelete />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </article>
+                    );
+                })}
+            </div>
         </div>
     );
 }
