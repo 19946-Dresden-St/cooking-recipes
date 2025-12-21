@@ -14,17 +14,17 @@ const storage = multer.diskStorage({
     },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 const getRecipes = async (req, res) => {
-    const recipes = await Recipes.find()
-    return res.json(recipes)
-}
+    const recipes = await Recipes.find();
+    return res.json(recipes);
+};
 
 const getRecipe = async (req, res) => {
-    const recipe = await Recipes.findById(req.params.id)
-    return res.json(recipe)
-}
+    const recipe = await Recipes.findById(req.params.id);
+    return res.json(recipe);
+};
 
 const addRecipe = async (req, res) => {
     try {
@@ -69,19 +69,43 @@ const addRecipe = async (req, res) => {
 const editRecipe = async (req, res) => {
     try {
         const recipe = await Recipes.findById(req.params.id);
-        if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+        if (!recipe) {
+            return res.status(404).json({ message: "Recipe not found" });
+        }
 
-        const coverImage = req.file?.filename ? req.file.filename : recipe.coverImage;
+        let coverImage = recipe.coverImage;
 
-        const updated = await Recipes.findByIdAndUpdate(
+        if (req.file) {
+
+            if (recipe.coverImage && recipe.coverImage !== "heroSection.jpg") {
+                const oldImagePath = path.join(
+                    __dirname,
+                    "..",
+                    "public",
+                    "images",
+                    recipe.coverImage
+                );
+
+                fs.unlink(oldImagePath, (err) => {
+                    if (err) {
+                        console.warn("Old image deletion failed:", err.message);
+                    }
+                });
+            }
+
+            coverImage = req.file.filename;
+        }
+
+        const updatedRecipe = await Recipes.findByIdAndUpdate(
             req.params.id,
             { ...req.body, coverImage },
             { new: true, runValidators: true }
         );
 
-        return res.json(updated);
+        return res.json(updatedRecipe);
     } catch (err) {
-        return res.status(400).json({ message: "error" });
+        console.error(err);
+        return res.status(400).json({ message: "Error updating recipe" });
     }
 };
 
@@ -93,15 +117,13 @@ const deleteRecipe = async (req, res) => {
             return res.status(404).json({ message: "Recipe not found" });
         }
 
-        const imageName = recipe.coverImage;
-
-        if (imageName && imageName !== "heroSection.jpg") {
+        if (recipe.coverImage && recipe.coverImage !== "heroSection.jpg") {
             const imagePath = path.join(
                 __dirname,
                 "..",
                 "public",
                 "images",
-                imageName
+                recipe.coverImage
             );
 
             fs.unlink(imagePath, (err) => {
@@ -126,5 +148,5 @@ module.exports = {
     addRecipe,
     editRecipe,
     deleteRecipe,
-    upload
-}
+    upload,
+};
