@@ -1,5 +1,6 @@
 const Recipes = require("../models/recipe");
 const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
 
 const storage = multer.diskStorage({
@@ -86,12 +87,38 @@ const editRecipe = async (req, res) => {
 
 const deleteRecipe = async (req, res) => {
     try {
-        await Recipes.deleteOne({_id: req.params.id})
-        res.json({ status: "Recipe deleted successfully" })
+        const recipe = await Recipes.findById(req.params.id);
+
+        if (!recipe) {
+            return res.status(404).json({ message: "Recipe not found" });
+        }
+
+        const imageName = recipe.coverImage;
+
+        if (imageName && imageName !== "heroSection.jpg") {
+            const imagePath = path.join(
+                __dirname,
+                "..",
+                "public",
+                "images",
+                imageName
+            );
+
+            fs.unlink(imagePath, (err) => {
+                if (err) {
+                    console.warn("Image deletion failed:", err.message);
+                }
+            });
+        }
+
+        await Recipes.deleteOne({ _id: req.params.id });
+
+        return res.json({ status: "Recipe deleted successfully" });
     } catch (err) {
-        return res.status(400).json({ message: "error" })
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
     }
-}
+};
 
 module.exports = {
     getRecipes,

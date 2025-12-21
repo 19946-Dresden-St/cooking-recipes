@@ -22,7 +22,12 @@ export default function RecipeItems() {
     }, [recipes]);
 
     const onDelete = async (id) => {
-        await axios.delete(`${API_BASE_URL}/recipe/${id}`).then((res) => console.log(res));
+        await axios.delete(`${API_BASE_URL}/recipe/${id}`, {
+            headers: {
+                authorization: "bearer " + localStorage.getItem("token"),
+            },
+        });
+
         setAllRecipes((recipes) => recipes.filter((recipe) => recipe._id !== id));
 
         const filteredItems = favItems.filter((recipe) => recipe._id !== id);
