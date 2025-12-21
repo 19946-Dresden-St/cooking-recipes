@@ -4,6 +4,7 @@ import axios from "axios";
 import { API_BASE_URL } from "../apiBase.js";
 import CategoryFilterBar from "../components/CategoryFilterBar";
 import RecipeCard from "../components/RecipeCard";
+import ConfirmDeleteRecipeModal from "../components/ConfirmDeleteRecipeModal";
 
 export default function RecipeItems() {
     const recipes = useLoaderData();
@@ -13,6 +14,8 @@ export default function RecipeItems() {
     const [isFavRecipe, setIsFavRecipe] = useState(false);
     const navigate = useNavigate();
     const [selectedCategory, setSelectedCategory] = useState("all");
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         setAllRecipes(recipes);
@@ -21,8 +24,21 @@ export default function RecipeItems() {
     const onDelete = async (id) => {
         await axios.delete(`${API_BASE_URL}/recipe/${id}`).then((res) => console.log(res));
         setAllRecipes((recipes) => recipes.filter((recipe) => recipe._id !== id));
+
         const filteredItems = favItems.filter((recipe) => recipe._id !== id);
         localStorage.setItem("fav", JSON.stringify(filteredItems));
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget?._id) return;
+
+        setIsDeleting(true);
+        try {
+            await onDelete(deleteTarget._id);
+            setDeleteTarget(null);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const favRecipe = (item) => {
@@ -59,12 +75,21 @@ export default function RecipeItems() {
                             path={path}
                             isFav={isFav}
                             onToggleFav={favRecipe}
-                            onDelete={onDelete}
+                            onRequestDelete={(recipe) => setDeleteTarget(recipe)}
                             onOpen={(id) => navigate(`/recipe/${id}`)}
                         />
                     );
                 })}
             </div>
+
+            {deleteTarget && (
+                <ConfirmDeleteRecipeModal
+                    recipeTitle={deleteTarget?.title ?? "Sans nom"}
+                    isLoading={isDeleting}
+                    onCancel={() => (isDeleting ? null : setDeleteTarget(null))}
+                    onConfirm={confirmDelete}
+                />
+            )}
         </div>
     );
 }

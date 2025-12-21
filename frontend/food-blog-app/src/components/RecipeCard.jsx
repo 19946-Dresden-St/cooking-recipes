@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { BsFillStopwatchFill } from "react-icons/bs";
-import { PiPersonArmsSpreadFill } from "react-icons/pi";
 import { FaHeart } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
 import { FaAppleAlt } from "react-icons/fa";
@@ -12,7 +11,7 @@ import { API_BASE_URL } from "../apiBase";
 import placeholderImg from "../assets/heroSection.jpg";
 import { getBadgeClass, getCategoryLabel } from "../utils/categories";
 
-export default function RecipeCard({item, path, isFav, onToggleFav, onDelete, onOpen}) {
+export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDelete, onOpen}) {
     const categoryValue = item?.category ?? "entree";
     const categoryLabel = getCategoryLabel(categoryValue);
     const badgeClass = getBadgeClass(categoryValue);
@@ -102,7 +101,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onDelete, on
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onDelete(item._id);
+                                onRequestDelete(item);
                             }}
                             className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
                             aria-label="Supprimer"
