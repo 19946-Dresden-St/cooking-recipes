@@ -21,7 +21,7 @@ export default function RecipeDetails() {
                         <p className="text-sm text-zinc-600">
                             Postée par{" "}
                             <span className="font-semibold text-primary">
-                                {recipe?.email ?? "Anonyme"}
+                                {recipe?.username ?? "Anonyme"}
                             </span>
                         </p>
 

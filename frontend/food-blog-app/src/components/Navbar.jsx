@@ -91,7 +91,7 @@ export default function Navbar() {
                                 className="text-primary font-semibold hover:text-accent hover:cursor-pointer transition duration-300"
                             >
                                 {isLogin ? "Connexion" : "Se déconnecter"}
-                                {user?.email ? ` (${user.email})` : ""}
+                                {user?.username ? ` (${user.username})` : ""}
                             </button>
                         </li>
                     </ul>
@@ -149,7 +149,7 @@ export default function Navbar() {
                                 className="text-left text-primary font-semibold hover:text-accent transition duration-300 px-4 py-1.5"
                             >
                                 {isLogin ? "Connexion" : "Se déconnecter"}
-                                {user?.email ? ` (${user.email})` : ""}
+                                {user?.username ? ` (${user.username})` : ""}
                             </button>
                         </div>
                     </div>

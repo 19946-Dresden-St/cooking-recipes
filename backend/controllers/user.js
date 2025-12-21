@@ -2,32 +2,46 @@ const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+const normalizeUsername = (value) =>
+    String(value ?? "")
+        .trim()
+        .toLowerCase();
+
 const userSignUp = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password, email } = req.body;
 
-        if (!email || !password) {
+        if (!username || !password) {
             return res.status(400).json({
-                message: "Email or password cannot be empty",
+                error: "Username or password cannot be empty",
             });
         }
 
-        const existingUser = await User.findOne({ email });
+        const normalized = normalizeUsername(username);
+
+        if (normalized.length < 3) {
+            return res.status(400).json({
+                error: "Username must be at least 3 characters",
+            });
+        }
+
+        const existingUser = await User.findOne({ username: normalized });
         if (existingUser) {
             return res.status(400).json({
-                error: "Email already exists",
+                error: "Username already exists",
             });
         }
 
         const hashPwd = await bcrypt.hash(password, 10);
 
         const newUser = await User.create({
-            email,
+            username: normalized,
+            email: email ? String(email).trim().toLowerCase() : undefined,
             password: hashPwd,
         });
 
         const token = jwt.sign(
-            { email, id: newUser._id },
+            { username: newUser.username, id: newUser._id },
             process.env.SECRET_KEY,
             { expiresIn: "24h" }
         );
@@ -36,7 +50,7 @@ const userSignUp = async (req, res) => {
             token,
             user: {
                 _id: newUser._id,
-                email: newUser.email,
+                username: newUser.username,
             },
         });
     } catch (error) {
@@ -46,43 +60,42 @@ const userSignUp = async (req, res) => {
 
 const userLogin = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        if (!email || !password) {
+        if (!username || !password) {
             return res.status(400).json({
-                message: "Email or password cannot be empty",
+                error: "Username or password cannot be empty",
             });
         }
 
-        const user = await User.findOne({ email }).select("+password");
+        const normalized = normalizeUsername(username);
+
+        const user = await User.findOne({ username: normalized }).select("+password");
 
         if (!user) {
             return res.status(400).json({
-                error: "Invalid email or password",
+                error: "Invalid username or password",
             });
         }
 
         const isValid = await bcrypt.compare(password, user.password);
-
         if (!isValid) {
             return res.status(400).json({
-                error: "Invalid email or password",
+                error: "Invalid username or password",
             });
         }
 
         const token = jwt.sign(
-            { email, id: user._id },
+            { username: user.username, id: user._id },
             process.env.SECRET_KEY,
             { expiresIn: "24h" }
         );
-
-        user.password = undefined;
 
         return res.status(200).json({
             token,
             user: {
                 _id: user._id,
-                email: user.email,
+                username: user.username,
             },
         });
     } catch (error) {
@@ -93,9 +106,12 @@ const userLogin = async (req, res) => {
 const getUser = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
+
+        if (!user) return res.status(404).json({ error: "User not found" });
+
         res.json({
             _id: user._id,
-            email: user.email,
+            username: user.username,
         });
     } catch (error) {
         res.status(500).json({ error: "User not found" });

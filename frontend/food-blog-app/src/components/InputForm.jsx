@@ -1,27 +1,31 @@
-import React, { useState } from 'react'
-import axios from 'axios'
-import {API_BASE_URL} from "../apiBase.js";
+import React, { useState } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
 
-export default function InputForm({setIsOpen}) {
-    const [email,setEmail]=useState("")
-    const [password,setPassword]=useState("")
-    const [isSignUp,setIsSignUp]=useState(false)
-    const [error,setError]=useState("")
+export default function InputForm({ setIsOpen }) {
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [error, setError] = useState("");
 
     usePageTitle("Qu'est-ce qu'on mange ? | Connexion / Inscription");
 
-    const handleOnSubmit=async(e)=>{
-        e.preventDefault()
-        let endpoint=(isSignUp) ? "signUp" : "login"
-        await axios.post(`${API_BASE_URL}/${endpoint}`,{email,password})
-            .then((res)=>{
-                localStorage.setItem("token",res.data.token)
-                localStorage.setItem("user",JSON.stringify(res.data.user))
-                setIsOpen()
+    const handleOnSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+
+        const endpoint = isSignUp ? "signUp" : "login";
+
+        await axios
+            .post(`${API_BASE_URL}/${endpoint}`, { username, password })
+            .then((res) => {
+                localStorage.setItem("token", res.data.token);
+                localStorage.setItem("user", JSON.stringify(res.data.user));
+                setIsOpen();
             })
-            .catch(data=>setError(data.response?.data?.error))
-    }
+            .catch((data) => setError(data.response?.data?.error || "Erreur"));
+    };
 
     return (
         <form onSubmit={handleOnSubmit} className="space-y-4">
@@ -37,13 +41,14 @@ export default function InputForm({setIsOpen}) {
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-semibold text-zinc-800">Email</label>
+                <label className="text-sm font-semibold text-zinc-800">Pseudo</label>
                 <input
-                    type="email"
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     required
                     className="input"
-                    placeholder="ton@email.com"
+                    placeholder="ton_pseudo"
                 />
             </div>
 
@@ -51,6 +56,7 @@ export default function InputForm({setIsOpen}) {
                 <label className="text-sm font-semibold text-zinc-800">Mot de passe</label>
                 <input
                     type="password"
+                    value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="input"
@@ -64,10 +70,7 @@ export default function InputForm({setIsOpen}) {
                 </div>
             )}
 
-            <button
-                type="submit"
-                className="w-full btn-primary"
-            >
+            <button type="submit" className="w-full btn-primary">
                 {isSignUp ? "S'inscrire" : "Se connecter"}
             </button>
 
@@ -80,5 +83,4 @@ export default function InputForm({setIsOpen}) {
             </button>
         </form>
     );
-
 }

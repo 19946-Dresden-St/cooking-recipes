@@ -37,7 +37,7 @@ const getRecipe=async({params})=>{
 
     await axios.get(`${API_BASE_URL}/user/${recipe.createdBy}`)
         .then(res=>{
-            recipe={...recipe,email:res.data.email}
+            recipe = { ...recipe, username: res.data.username }
         })
 
     return recipe
