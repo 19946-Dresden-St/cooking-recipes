@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router-dom";
 import { BsFillStopwatchFill } from "react-icons/bs";
-import { FaListAlt } from "react-icons/fa";
 import { PiPersonArmsSpreadFill } from "react-icons/pi";
 import { FaHeart } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
+import { FaAppleAlt } from "react-icons/fa";
+import { BiRestaurant } from "react-icons/bi";
 import { MdDelete } from "react-icons/md";
 import axios from "axios";
 import { API_BASE_URL } from "../apiBase.js";
@@ -29,8 +30,6 @@ export default function RecipeItems() {
     let favItems = JSON.parse(localStorage.getItem("fav")) ?? [];
     const [isFavRecipe, setIsFavRecipe] = useState(false);
     const navigate = useNavigate();
-
-    // ✅ Filtre catégorie
     const [selectedCategory, setSelectedCategory] = useState("all");
 
     useEffect(() => {
@@ -56,7 +55,6 @@ export default function RecipeItems() {
         setIsFavRecipe((pre) => !pre);
     };
 
-    // ✅ Helpers pour badge dynamique
     const getCategoryLabel = (category) => {
         return CATEGORY_MAP[category] ?? "Plat";
     };
@@ -66,7 +64,6 @@ export default function RecipeItems() {
         return `badge-${safe}`;
     };
 
-    // ✅ Données filtrées
     const filteredRecipes =
         selectedCategory === "all"
             ? allRecipes
@@ -76,7 +73,7 @@ export default function RecipeItems() {
 
     return (
         <div className="space-y-6">
-            {/* ✅ Barre de tri / filtres par catégorie */}
+
             <div className="flex flex-wrap items-center gap-2">
                 <button
                     type="button"
@@ -112,7 +109,6 @@ export default function RecipeItems() {
                 })}
             </div>
 
-            {/* ✅ Grille recettes */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredRecipes?.map((item) => {
                     const isFav = favItems.some((res) => res._id === item._id);
@@ -178,27 +174,27 @@ export default function RecipeItems() {
                                             <div className="flex items-center gap-1">
                                                 <BsFillStopwatchFill />
                                                 <span className="font-semibold text-primary">
-                          {item.time}
-                        </span>
+                                                    {item.time}
+                                                </span>
                                             </div>
                                             <span className="text-xs text-zinc-400">Minutes</span>
                                         </div>
 
                                         <div className="flex flex-col items-start leading-tight gap-1">
-                                            <div className="flex items-center gap-2">
-                                                <FaListAlt />
+                                            <div className="flex items-center gap-1">
+                                                <FaAppleAlt />
                                                 <span className="font-semibold text-primary">
-                          {ingredientsCount}
-                        </span>
+                                                    {ingredientsCount}
+                                                </span>
                                             </div>
                                             <span className="text-xs text-zinc-400">
-                        {ingredientsLabel}
-                      </span>
+                                                {ingredientsLabel}
+                                            </span>
                                         </div>
 
                                         <div className="flex flex-col items-start leading-tight gap-1">
                                             <div className="flex items-center gap-1">
-                                                <PiPersonArmsSpreadFill />
+                                                <BiRestaurant />
                                                 <span className="font-semibold text-primary">4</span>
                                             </div>
                                             <span className="text-xs text-zinc-400">Personnes</span>
