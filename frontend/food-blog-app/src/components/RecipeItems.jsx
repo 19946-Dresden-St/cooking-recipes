@@ -17,10 +17,16 @@ export default function RecipeItems() {
     // 🔑 clés uniques par page
     const SEARCH_KEY = `recipe-search-${window.location.pathname}`;
     const CATEGORY_KEY = `recipe-category-${window.location.pathname}`;
+    const TIME_KEY = `recipe-time-${window.location.pathname}`;
 
     // 🏷 Catégorie (persistée)
     const [selectedCategory, setSelectedCategory] = useState(
         () => localStorage.getItem(CATEGORY_KEY) ?? "all"
+    );
+
+    // ⏱ Temps (persisté)
+    const [selectedTime, setSelectedTime] = useState(
+        () => localStorage.getItem(TIME_KEY) ?? "all"
     );
 
     // 🔍 Recherche (persistée + debounce)
@@ -53,6 +59,11 @@ export default function RecipeItems() {
         localStorage.setItem(CATEGORY_KEY, selectedCategory);
     }, [selectedCategory, CATEGORY_KEY]);
 
+    // 🔹 Persistence temps
+    useEffect(() => {
+        localStorage.setItem(TIME_KEY, selectedTime);
+    }, [selectedTime, TIME_KEY]);
+
     // ❌ Reset recherche
     const clearSearch = () => {
         setSearchTerm("");
@@ -67,13 +78,9 @@ export default function RecipeItems() {
             },
         });
 
-        setAllRecipes((recipes) =>
-            recipes.filter((recipe) => recipe._id !== id)
-        );
+        setAllRecipes((recipes) => recipes.filter((recipe) => recipe._id !== id));
 
-        const filteredItems = favItems.filter(
-            (recipe) => recipe._id !== id
-        );
+        const filteredItems = favItems.filter((recipe) => recipe._id !== id);
         localStorage.setItem("fav", JSON.stringify(filteredItems));
     };
 
@@ -90,9 +97,7 @@ export default function RecipeItems() {
     };
 
     const favRecipe = (item) => {
-        const filteredItems = favItems.filter(
-            (recipe) => recipe._id !== item._id
-        );
+        const filteredItems = favItems.filter((recipe) => recipe._id !== item._id);
 
         favItems =
             favItems.filter((recipe) => recipe._id === item._id).length === 0
@@ -103,6 +108,18 @@ export default function RecipeItems() {
         setIsFavRecipe((prev) => !prev);
     };
 
+    // ⏱ filtre temps
+    const matchesTime = (recipe) => {
+        const t = Number(recipe?.time ?? 0);
+
+        if (selectedTime === "all") return true;
+        if (selectedTime === "fast") return t > 0 && t < 20;
+        if (selectedTime === "medium") return t >= 20 && t <= 35;
+        if (selectedTime === "long") return t > 35;
+
+        return true;
+    };
+
     // 🔍 FILTRAGE FINAL
     const filteredRecipes = allRecipes
         .filter((r) =>
@@ -110,21 +127,19 @@ export default function RecipeItems() {
                 ? true
                 : (r?.category ?? "plat") === selectedCategory
         )
+        .filter(matchesTime)
         .filter((r) =>
-            r.title
-                .toLowerCase()
-                .includes(debouncedSearch.toLowerCase())
+            (r?.title ?? "").toLowerCase().includes(debouncedSearch.toLowerCase())
         );
 
     return (
         <div className="space-y-6">
-
             {/* 🔍 BARRE DE RECHERCHE AVEC ICÔNE */}
             <div className="relative">
                 {/* Icône loupe */}
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                    🔍
-                </span>
+          🔍
+        </span>
 
                 <input
                     type="text"
@@ -139,16 +154,24 @@ export default function RecipeItems() {
                     <button
                         onClick={clearSearch}
                         className="
-                            absolute right-3 top-1/2 -translate-y-1/2
-                            text-gray-400 hover:text-gray-700
-                            text-lg
-                        "
+              absolute right-3 top-1/2 -translate-y-1/2
+              text-gray-400 hover:text-gray-700
+              text-lg
+            "
                         aria-label="Effacer la recherche"
                     >
                         ✕
                     </button>
                 )}
             </div>
+
+            {/* 🏷 CATÉGORIES (gauche) + ⏱ TEMPS (droite) */}
+            <CategoryFilterBar
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                selectedTime={selectedTime}
+                onSelectTime={setSelectedTime}
+            />
 
             {/* 🔢 COMPTEUR */}
             <p className="text-sm text-gray-500">
@@ -157,18 +180,10 @@ export default function RecipeItems() {
                 {filteredRecipes.length > 1 ? "s" : ""}
             </p>
 
-            {/* 🏷 CATÉGORIES */}
-            <CategoryFilterBar
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-            />
-
             {/* 📋 RECETTES */}
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {filteredRecipes.map((item) => {
-                    const isFav = favItems.some(
-                        (res) => res._id === item._id
-                    );
+                    const isFav = favItems.some((res) => res._id === item._id);
 
                     return (
                         <RecipeCard
@@ -177,12 +192,8 @@ export default function RecipeItems() {
                             path={path}
                             isFav={isFav}
                             onToggleFav={favRecipe}
-                            onRequestDelete={(recipe) =>
-                                setDeleteTarget(recipe)
-                            }
-                            onOpen={(id) =>
-                                navigate(`/recipe/${id}`)
-                            }
+                            onRequestDelete={(recipe) => setDeleteTarget(recipe)}
+                            onOpen={(id) => navigate(`/recipe/${id}`)}
                         />
                     );
                 })}
@@ -193,9 +204,7 @@ export default function RecipeItems() {
                 <ConfirmDeleteRecipeModal
                     recipeTitle={deleteTarget?.title ?? "Sans nom"}
                     isLoading={isDeleting}
-                    onCancel={() =>
-                        isDeleting ? null : setDeleteTarget(null)
-                    }
+                    onCancel={() => (isDeleting ? null : setDeleteTarget(null))}
                     onConfirm={confirmDelete}
                 />
             )}

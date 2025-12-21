@@ -1,10 +1,10 @@
 export const CATEGORY_MAP = {
-    apero: "Apéro",
-    entree: "Entrée",
-    plat: "Plat",
-    dessert: "Dessert",
-    boisson: "Boisson",
-    brunch: "Brunch",
+    apero: "Apéro 🫒",
+    entree: "Entrée 🥗",
+    plat: "Plat 🍝",
+    dessert: "Dessert 🍰",
+    boisson: "Boisson 🍹",
+    brunch: "Brunch 🍳",
 };
 
 export const CATEGORY_ORDER = ["apero", "entree", "plat", "dessert", "boisson", "brunch"];
