@@ -28,7 +28,7 @@ const getRecipe = async (req, res) => {
 
 const addRecipe = async (req, res) => {
     try {
-        const { title, ingredients, instructions, time, category } = req.body;
+        const { title, ingredients, instructions, time, category, servings } = req.body;
 
         if (!title || !ingredients || !instructions || !time) {
             return res.status(400).json({
@@ -38,22 +38,32 @@ const addRecipe = async (req, res) => {
         }
 
         const parsedTime = Number(time);
-
         if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
             return res.status(400).json({
                 message: "Le temps doit être un entier positif.",
             });
         }
 
-        const coverImage = req.file
-            ? req.file.filename
-            : "heroSection.jpg";
+        // ✅ servings (optionnel côté front, default 4 sinon)
+        const parsedServings =
+            servings === undefined || servings === null || servings === ""
+                ? 4
+                : Number(servings);
+
+        if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
+            return res.status(400).json({
+                message: "Le nombre de personnes doit être un entier positif.",
+            });
+        }
+
+        const coverImage = req.file ? req.file.filename : "heroSection.jpg";
 
         const newRecipe = await Recipes.create({
             title,
             ingredients,
             instructions,
             time: parsedTime,
+            servings: parsedServings,
             category: category || "plat",
             coverImage,
             createdBy: req.user.id,
@@ -73,10 +83,10 @@ const editRecipe = async (req, res) => {
             return res.status(404).json({ message: "Recipe not found" });
         }
 
+        // ✅ si nouvelle image : supprimer l'ancienne
         let coverImage = recipe.coverImage;
 
         if (req.file) {
-
             if (recipe.coverImage && recipe.coverImage !== "heroSection.jpg") {
                 const oldImagePath = path.join(
                     __dirname,
@@ -96,9 +106,32 @@ const editRecipe = async (req, res) => {
             coverImage = req.file.filename;
         }
 
+        // ✅ validations time/servings si présents dans req.body
+        const updateData = { ...req.body, coverImage };
+
+        if (updateData.time !== undefined) {
+            const parsedTime = Number(updateData.time);
+            if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
+                return res.status(400).json({
+                    message: "Le temps doit être un entier positif.",
+                });
+            }
+            updateData.time = parsedTime;
+        }
+
+        if (updateData.servings !== undefined) {
+            const parsedServings = Number(updateData.servings);
+            if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
+                return res.status(400).json({
+                    message: "Le nombre de personnes doit être un entier positif.",
+                });
+            }
+            updateData.servings = parsedServings;
+        }
+
         const updatedRecipe = await Recipes.findByIdAndUpdate(
             req.params.id,
-            { ...req.body, coverImage },
+            updateData,
             { new: true, runValidators: true }
         );
 

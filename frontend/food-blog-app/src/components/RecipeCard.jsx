@@ -19,6 +19,9 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
     const ingredientsCount = Array.isArray(item.ingredients) ? item.ingredients.length : 0;
     const ingredientsLabel = ingredientsCount === 1 ? "Ingrédient" : "Ingrédients";
 
+    const servings = Number.isFinite(Number(item?.servings)) ? Number(item.servings) : 4;
+    const servingsLabel = servings === 1 ? "Personne" : "Personnes";
+
     return (
         <article
             onClick={() => onOpen(item._id)}
@@ -62,7 +65,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                     <div className="flex items-start gap-8 text-sm text-zinc-500">
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
-                                <BsFillStopwatchFill />
+                                <span>⏱️</span>
                                 <span className="font-semibold text-primary">{item.time}</span>
                             </div>
                             <span className="text-xs text-zinc-400">Minutes</span>
@@ -70,7 +73,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
 
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
-                                <FaAppleAlt />
+                                <span>🫙️</span>
                                 <span className="font-semibold text-primary">{ingredientsCount}</span>
                             </div>
                             <span className="text-xs text-zinc-400">{ingredientsLabel}</span>
@@ -78,10 +81,10 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
 
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
-                                <BiRestaurant />
-                                <span className="font-semibold text-primary">4</span>
+                                <span>🍽</span>
+                                <span className="font-semibold text-primary">{servings}</span>
                             </div>
-                            <span className="text-xs text-zinc-400">Personnes</span>
+                            <span className="text-xs text-zinc-400">{servingsLabel}</span>
                         </div>
                     </div>
                 </div>

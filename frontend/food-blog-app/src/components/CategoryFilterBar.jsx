@@ -7,9 +7,9 @@ import {
 
 const TIME_FILTERS = [
     { key: "all", label: "Tous" },
-    { key: "fast", label: "Rapides 🥪" },
-    { key: "medium", label: "Du quotidien 🍛" },
-    { key: "long", label: "Prendre son temps 🍲" },
+    { key: "fast", label: "🥪 Rapides" },
+    { key: "medium", label: "🍛 Du quotidien" },
+    { key: "long", label: "🍲 Prendre son temps" },
 ];
 
 export default function CategoryFilterBar({

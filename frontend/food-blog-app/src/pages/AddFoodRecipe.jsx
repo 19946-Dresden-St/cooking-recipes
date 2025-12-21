@@ -10,7 +10,9 @@ export default function AddFoodRecipe() {
 
     const [recipeData, setRecipeData] = React.useState({
         category: "plat",
+        servings: 4, // ✅ default
     });
+
     const navigate = useNavigate();
 
     const onHandleChange = (e) => {
@@ -48,24 +50,18 @@ export default function AddFoodRecipe() {
         }
     };
 
-
-
     return (
         <section className="bg-secondary py-10 md:py-14">
             <div className="mx-auto container">
-
                 <h2 className="mb-10">
-                        <span className="relative inline-block">
-                            Ajouter une recette
-                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                        </span>
+                    <span className="relative inline-block">
+                        Ajouter une recette
+                        <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                    </span>
                 </h2>
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
-
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
-
-
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-5">
                             <h2 className="text-primary text-xl font-extrabold">
                                 Infos
@@ -107,11 +103,31 @@ export default function AddFoodRecipe() {
                                     Temps (en minutes)
                                 </label>
                                 <input
-                                    type="text"
+                                    type="number"
                                     name="time"
                                     onChange={onHandleChange}
                                     placeholder="Ex : 20"
                                     className="input"
+                                    min={1}
+                                    step={1}
+                                    required
+                                />
+                            </div>
+
+                            {/* ✅ NOUVEAU : personnes */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-zinc-800">
+                                    Nombre de personnes
+                                </label>
+                                <input
+                                    type="number"
+                                    name="servings"
+                                    onChange={onHandleChange}
+                                    className="input"
+                                    min={1}
+                                    step={1}
+                                    value={recipeData.servings}
+                                    required
                                 />
                             </div>
 
@@ -164,16 +180,11 @@ export default function AddFoodRecipe() {
                         </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        className="w-full btn-primary"
-                    >
+                    <button type="submit" className="w-full btn-primary">
                         Ajouter la recette
                     </button>
                 </form>
             </div>
         </section>
     );
-
-
 }

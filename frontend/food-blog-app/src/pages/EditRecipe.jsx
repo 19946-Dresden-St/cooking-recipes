@@ -11,6 +11,7 @@ export default function EditRecipe() {
     const [recipeData, setRecipeData] = React.useState({
         title: "",
         time: "",
+        servings: 4, // ✅ default
         category: "plat",
         ingredients: "",
         instructions: "",
@@ -30,6 +31,7 @@ export default function EditRecipe() {
                     ingredients: (res.ingredients ?? []).join(", "),
                     instructions: res.instructions ?? "",
                     time: res.time ?? "",
+                    servings: res.servings ?? 4, // ✅ load
                     file: null,
                 });
             });
@@ -59,6 +61,7 @@ export default function EditRecipe() {
         const formData = new FormData();
         formData.append("title", recipeData.title);
         formData.append("time", recipeData.time);
+        formData.append("servings", recipeData.servings); // ✅ NEW
         formData.append("category", recipeData.category);
         formData.append("instructions", recipeData.instructions);
 
@@ -92,10 +95,10 @@ export default function EditRecipe() {
         <section className="bg-secondary py-10 md:py-14">
             <div className="container">
                 <h2 className="mb-10">
-          <span className="relative inline-block">
-            Modifier la recette
-            <span className="absolute left-0 -bottom-1 h-1 w-44 rounded-full bg-primary/20" />
-          </span>
+                    <span className="relative inline-block">
+                        Modifier la recette
+                        <span className="absolute left-0 -bottom-1 h-1 w-44 rounded-full bg-primary/20" />
+                    </span>
                 </h2>
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
@@ -141,11 +144,31 @@ export default function EditRecipe() {
                                     Temps (en minutes)
                                 </label>
                                 <input
-                                    type="text"
+                                    type="number"
                                     className="input"
                                     name="time"
                                     onChange={onHandleChange}
                                     value={recipeData.time}
+                                    min={1}
+                                    step={1}
+                                    required
+                                />
+                            </div>
+
+                            {/* ✅ NOUVEAU : personnes */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-zinc-800">
+                                    Nombre de personnes
+                                </label>
+                                <input
+                                    type="number"
+                                    className="input"
+                                    name="servings"
+                                    onChange={onHandleChange}
+                                    value={recipeData.servings}
+                                    min={1}
+                                    step={1}
+                                    required
                                 />
                             </div>
 

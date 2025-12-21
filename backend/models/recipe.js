@@ -20,6 +20,12 @@ const recipeSchema = new mongoose.Schema(
             required: true,
             min: [1, "Le temps doit être supérieur à 0"],
         },
+        servings: {
+            type: Number,
+            required: true,
+            min: [1, "Le nombre de personnes doit être supérieur à 0"],
+            default: 4,
+        },
         category: {
             type: String,
             enum: ["apero", "entree", "plat", "dessert", "boisson", "brunch"],
