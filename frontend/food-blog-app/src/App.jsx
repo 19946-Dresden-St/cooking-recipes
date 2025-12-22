@@ -9,6 +9,7 @@ import EditRecipe from "./pages/EditRecipe.jsx";
 import RecipeDetails from "./pages/RecipeDetails.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
 import FavRecipes from "./pages/FavRecipes.jsx";
+import Generator from "./pages/Generator.jsx";
 
 
 const getAllRecipes = async () => {
@@ -45,14 +46,15 @@ const getRecipe=async({params})=>{
 
 const router = createBrowserRouter([
     { path: "/", element: <MainNavigation />,  children: [
-        { path: "/", element: <Home />, loader: getAllRecipes },
-        { path: "/myRecipe", element: <MyRecipes />, loader: getMyRecipes },
-        { path: "/favRecipe", element: <FavRecipes />, loader: getFavRecipes },
-        { path: "/addRecipe", element: <AddFoodRecipe /> },
-        { path: "/editRecipe/:id", element: <EditRecipe /> },
-        {path:"/recipe/:id",element:<RecipeDetails/>,loader:getRecipe}
-    ]}
-])
+            { path: "/", element: <Home />, loader: getAllRecipes },
+            { path: "/generator", element: <Generator /> },
+            { path: "/myRecipe", element: <MyRecipes />, loader: getMyRecipes },
+            { path: "/favRecipe", element: <FavRecipes />, loader: getFavRecipes },
+            { path: "/addRecipe", element: <AddFoodRecipe /> },
+            { path: "/editRecipe/:id", element: <EditRecipe /> },
+            { path:"/recipe/:id", element:<RecipeDetails/>, loader:getRecipe }
+        ]}
+]);
 
 export default function App() {
     return (

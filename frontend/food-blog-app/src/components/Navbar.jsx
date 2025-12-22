@@ -104,6 +104,14 @@ export default function Navbar() {
                         </li>
                         <li>
                             <NavLink
+                                to="/generator"
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
+                            >
+                                Générateur
+                            </NavLink>
+                        </li>
+                        <li>
+                            <NavLink
                                 to="/myRecipe"
                                 onClick={openLoginIfNeeded}
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
@@ -154,6 +162,14 @@ export default function Navbar() {
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Accueil
+                            </NavLink>
+
+                            <NavLink
+                                to="/generator"
+                                onClick={() => setIsMenuOpen(false)}
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
+                            >
+                                Générateur
                             </NavLink>
 
                             <NavLink

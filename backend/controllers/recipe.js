@@ -34,6 +34,51 @@ const getRecipe = async (req, res) => {
     return res.json(recipe);
 };
 
+const getRandomRecipes = async (req, res) => {
+    try {
+        const countRaw = req.query.count;
+        const countParsed = Number.parseInt(countRaw, 10);
+        const count = Number.isFinite(countParsed) && countParsed > 0 ? Math.min(countParsed, 50) : 1;
+
+        const category = (req.query.category || "plat").toString().trim();
+
+        const excludeRaw = (req.query.exclude || "").toString().trim();
+        const excludeIds = excludeRaw
+            ? excludeRaw
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((id) => {
+                    try {
+                        return new mongoose.Types.ObjectId(id);
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter(Boolean)
+            : [];
+
+        const match = {};
+
+        // category is optional, but default is "plat"
+        if (category) match.category = category;
+
+        if (excludeIds.length > 0) {
+            match._id = { $nin: excludeIds };
+        }
+
+        const randomRecipes = await Recipes.aggregate([
+            { $match: match },
+            { $sample: { size: count } },
+        ]);
+
+        return res.json(randomRecipes);
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
 const addRecipe = async (req, res) => {
     try {
         const { title, ingredients, instructions, time, category, servings } = req.body;
@@ -204,6 +249,7 @@ const deleteRecipe = async (req, res) => {
 module.exports = {
     getRecipes,
     getRecipe,
+    getRandomRecipes,
     addRecipe,
     editRecipe,
     deleteRecipe,
