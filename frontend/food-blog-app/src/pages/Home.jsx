@@ -75,7 +75,9 @@ export default function Home() {
                             </h1>
 
                             <h2 className="mt-4 text-lg md:text-2xl font-semibold text-white/90">
-                                {showHello ? "Que mange-t-on de bon aujourd'hui ?" : "Des recettes simples, rapides, et (vraiment) bonnes."}
+                                {showHello
+                                    ? "Que mange-t-on de bon aujourd'hui ?"
+                                    : "Des recettes simples, rapides, et (vraiment) bonnes."}
                             </h2>
 
                             <a href="#recipesList" className="btn-primary inline-block mt-8">
@@ -94,12 +96,19 @@ export default function Home() {
 
             <section id="recipesList" className="scroll-mt-24 bg-secondary py-16">
                 <div className="mx-auto container">
-                    <h2 className="mb-10">
-                        <span className="relative inline-block">
-                            Toutes les recettes
-                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                        </span>
-                    </h2>
+                    {/* Header: titre à gauche + bouton à droite */}
+                    <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <h2 className="mb-0">
+                            <span className="relative inline-block">
+                                Toutes les recettes
+                                <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                            </span>
+                        </h2>
+
+                        <button onClick={addRecipe} className="btn-primary" type="button">
+                            Ajouter une recette
+                        </button>
+                    </div>
 
                     <RecipeItems />
                 </div>

@@ -21,7 +21,7 @@ export default function FavRecipes() {
                             </span>
                         </h2>
                         <p className="mt-1 text-sm text-zinc-600">
-                            Les recettes que tu veux refaire (ou juste admirer).
+                            Retrouve ici toutes les recettes que tu as mises en favoris, pour les refaire à loisir !
                         </p>
                     </div>
 
