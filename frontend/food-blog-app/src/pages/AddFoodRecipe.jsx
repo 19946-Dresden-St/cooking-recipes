@@ -195,6 +195,7 @@ export default function AddFoodRecipe() {
                                     <option value="apero">Apéro</option>
                                     <option value="entree">Entrée</option>
                                     <option value="plat">Plat</option>
+                                    <option value="sauce">Sauce</option>
                                     <option value="dessert">Dessert</option>
                                     <option value="boisson">Boisson</option>
                                     <option value="brunch">Brunch</option>

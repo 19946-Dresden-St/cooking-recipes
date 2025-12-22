@@ -78,6 +78,10 @@
         background-color: #22c55e;
     }
 
+    .badge-sauce {
+        background-color: #14b8a6;
+    }
+
     .badge-plat {
         background-color: #ef4444;
     }
@@ -96,6 +100,7 @@
 
     .badge-apero,
     .badge-entree,
+    .badge-sauce,
     .badge-plat,
     .badge-dessert,
     .badge-boisson,
