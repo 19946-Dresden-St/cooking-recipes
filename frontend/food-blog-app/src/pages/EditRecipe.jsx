@@ -11,69 +11,112 @@ export default function EditRecipe() {
     const [recipeData, setRecipeData] = React.useState({
         title: "",
         time: "",
-        servings: 4, // ✅ default
+        servings: 4,
         category: "plat",
-        ingredients: "",
         instructions: "",
         file: null,
     });
 
+    // ✅ Ingrédients (UI)
+    const [ingredientsStepReady, setIngredientsStepReady] = React.useState(false);
+    const [ingredientsCount, setIngredientsCount] = React.useState(3);
+    const [ingredientInputs, setIngredientInputs] = React.useState([]); // Array<string>
+
     const navigate = useNavigate();
     const { id } = useParams();
 
+    const syncIngredientsToFormData = React.useCallback((inputs) => {
+        return inputs.map((s) => (s ?? "").trim()).filter(Boolean);
+    }, []);
+
+    const generateIngredientInputs = (count, existing = []) => {
+        const safeCount = Math.max(1, Number(count) || 1);
+        const next = Array.from({ length: safeCount }, (_, i) => existing[i] ?? "");
+        setIngredientInputs(next);
+        setIngredientsStepReady(true);
+    };
+
     useEffect(() => {
         const getData = async () => {
-            await axios.get(`${API_BASE_URL}/recipe/${id}`).then((response) => {
-                const res = response.data;
-                setRecipeData({
-                    title: res.title ?? "",
-                    category: res.category ?? "plat",
-                    ingredients: (res.ingredients ?? []).join(", "),
-                    instructions: res.instructions ?? "",
-                    time: res.time ?? "",
-                    servings: res.servings ?? 4, // ✅ load
-                    file: null,
-                });
+            const response = await axios.get(`${API_BASE_URL}/recipe/${id}`);
+            const res = response.data;
+
+            setRecipeData({
+                title: res.title ?? "",
+                category: res.category ?? "plat",
+                instructions: res.instructions ?? "",
+                time: res.time ?? "",
+                servings: res.servings ?? 4,
+                file: null,
             });
+
+            const existingIngredients = Array.isArray(res.ingredients) ? res.ingredients : [];
+            setIngredientsCount(existingIngredients.length || 3);
+
+            // En édition, on pré-génère direct les inputs avec les ingrédients existants
+            generateIngredientInputs(existingIngredients.length || 1, existingIngredients);
         };
+
         getData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const onHandleChange = (e) => {
         const { name, value, files } = e.target;
 
         if (name === "file") {
-            setRecipeData((pre) => ({ ...pre, file: files?.[0] ?? null }));
+            setRecipeData((prev) => ({ ...prev, file: files?.[0] ?? null }));
             return;
         }
 
-        setRecipeData((pre) => ({ ...pre, [name]: value }));
+        setRecipeData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const onIngredientChange = (idx, value) => {
+        setIngredientInputs((prev) => {
+            const next = [...prev];
+            next[idx] = value;
+            return next;
+        });
+    };
+
+    const addIngredientInput = () => {
+        setIngredientInputs((prev) => [...prev, ""]);
+    };
+
+    const removeIngredientInput = (idx) => {
+        setIngredientInputs((prev) => {
+            const next = prev.filter((_, i) => i !== idx);
+            return next.length ? next : [""];
+        });
     };
 
     const onHandleSubmit = async (e) => {
         e.preventDefault();
 
-        const ingredientsArray = recipeData.ingredients
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-
-        const formData = new FormData();
-        formData.append("title", recipeData.title);
-        formData.append("time", recipeData.time);
-        formData.append("servings", recipeData.servings); // ✅ NEW
-        formData.append("category", recipeData.category);
-        formData.append("instructions", recipeData.instructions);
-
-        ingredientsArray.forEach((ing) => formData.append("ingredients", ing));
-
-        if (recipeData.file) {
-            formData.append("file", recipeData.file);
-        }
-
         const toastId = toast.loading("Enregistrement des modifications…");
 
         try {
+            const cleanedIngredients = syncIngredientsToFormData(ingredientInputs);
+
+            if (cleanedIngredients.length === 0) {
+                toast.error("Ajoute au moins un ingrédient.", { id: toastId });
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("title", recipeData.title);
+            formData.append("time", recipeData.time);
+            formData.append("servings", recipeData.servings);
+            formData.append("category", recipeData.category);
+            formData.append("instructions", recipeData.instructions);
+
+            cleanedIngredients.forEach((ing) => formData.append("ingredients", ing));
+
+            if (recipeData.file) {
+                formData.append("file", recipeData.file);
+            }
+
             await axios.put(`${API_BASE_URL}/recipe/${id}`, formData, {
                 headers: {
                     authorization: "bearer " + localStorage.getItem("token"),
@@ -103,13 +146,12 @@ export default function EditRecipe() {
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
+                        {/* INFOS */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-5">
                             <h2 className="text-primary text-xl font-extrabold">Infos</h2>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-zinc-800">
-                                    Nom
-                                </label>
+                                <label className="text-sm font-semibold text-zinc-800">Nom</label>
                                 <input
                                     type="text"
                                     className="input"
@@ -121,9 +163,7 @@ export default function EditRecipe() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-zinc-800">
-                                    Catégorie
-                                </label>
+                                <label className="text-sm font-semibold text-zinc-800">Catégorie</label>
                                 <select
                                     name="category"
                                     className="input"
@@ -155,7 +195,6 @@ export default function EditRecipe() {
                                 />
                             </div>
 
-                            {/* ✅ NOUVEAU : personnes */}
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-zinc-800">
                                     Nombre de personnes
@@ -189,31 +228,87 @@ export default function EditRecipe() {
                             </div>
                         </div>
 
+                        {/* INGRÉDIENTS */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
-                            <h2 className="text-primary text-xl font-extrabold">
-                                Ingrédients
-                            </h2>
+                            <h2 className="text-primary text-xl font-extrabold">Ingrédients</h2>
 
-                            <textarea
-                                name="ingredients"
-                                rows="12"
-                                onChange={onHandleChange}
-                                value={recipeData.ingredients}
-                                placeholder="Sépare les ingrédients par des virgules"
-                                className="textarea"
-                                required
-                            />
+                            {!ingredientsStepReady ? (
+                                <div className="space-y-3">
+                                    <label className="text-sm font-semibold text-zinc-800">
+                                        Combien d’ingrédients ?
+                                    </label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            className="input"
+                                            min={1}
+                                            step={1}
+                                            value={ingredientsCount}
+                                            onChange={(e) => setIngredientsCount(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => generateIngredientInputs(ingredientsCount)}
+                                            className="btn-primary-sm whitespace-nowrap"
+                                        >
+                                            Générer
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-xs text-zinc-500">Un ingrédient par ligne.</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIngredientsStepReady(false);
+                                                setIngredientInputs([]);
+                                            }}
+                                            className="text-xs font-semibold text-primary hover:opacity-80"
+                                        >
+                                            Reconfigurer
+                                        </button>
+                                    </div>
 
-                            <p className="text-xs text-zinc-500">
-                                Exemple :{" "}
-                                <span className="font-semibold">pâtes, crème, parmesan</span>
-                            </p>
+                                    <div className="space-y-2">
+                                        {ingredientInputs.map((val, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    className="input"
+                                                    placeholder={idx === 0 ? "Ex : 1 œuf" : "Ex : 100g de farine"}
+                                                    value={val}
+                                                    onChange={(e) => onIngredientChange(idx, e.target.value)}
+                                                    required={idx === 0}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeIngredientInput(idx)}
+                                                    className="rounded-full px-3 py-2 text-zinc-500 hover:bg-secondary"
+                                                    aria-label="Supprimer l’ingrédient"
+                                                    title="Supprimer"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={addIngredientInput}
+                                        className="btn-secondary-sm w-full"
+                                    >
+                                        + Ajouter un ingrédient
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
+                        {/* INSTRUCTIONS */}
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
-                            <h2 className="text-primary text-xl font-extrabold">
-                                Instructions
-                            </h2>
+                            <h2 className="text-primary text-xl font-extrabold">Instructions</h2>
 
                             <textarea
                                 name="instructions"
@@ -227,7 +322,12 @@ export default function EditRecipe() {
                         </div>
                     </div>
 
-                    <button type="submit" className="w-full btn-primary">
+                    <button
+                        type="submit"
+                        className="w-full btn-primary"
+                        disabled={!ingredientsStepReady}
+                        title={!ingredientsStepReady ? "Commence par générer les champs ingrédients" : undefined}
+                    >
                         Enregistrer les modifications
                     </button>
                 </form>

@@ -47,6 +47,14 @@
         @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-5 py-2.5 text-sm hover:cursor-pointer transition duration-600
     }
 
+    .btn-primary-sm {
+        @apply font-semibold bg-primary hover:bg-accent text-white rounded-md px-3 py-2.25 text-sm hover:cursor-pointer transition duration-600;
+    }
+
+    .btn-secondary-sm {
+        @apply font-semibold bg-secondary hover:bg-secondary-accent text-primary rounded-md px-3 py-2.25 text-xs hover:cursor-pointer transition duration-600;
+    }
+
     .input,
     .textarea {
         @apply w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none
