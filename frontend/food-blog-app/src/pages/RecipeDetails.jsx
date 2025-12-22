@@ -27,7 +27,7 @@ export default function RecipeDetails() {
         <section className="bg-secondary py-10 md:py-14">
             <div className="mx-auto max-w-4xl px-4">
                 {/* Header */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div className="flex flex-col gap-3">
                     <div>
                         <p className="text-sm text-zinc-600">
                             Postée par{" "}
@@ -39,24 +39,24 @@ export default function RecipeDetails() {
                         <h1 className="mt-2 text-primary">
                             {recipe?.title ?? "Recette"}
                         </h1>
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                        {/* ✅ Badges sous le titre */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
+                                <span>{categoryLabel}</span>
+                            </div>
 
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-                            <span>{categoryLabel}</span>
-                        </div>
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
+                                <span aria-hidden>⏱</span>
+                                <span>{recipe?.time ?? "—"} Mins</span>
+                            </div>
 
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-                            <span aria-hidden>⏱</span>
-                            <span>{recipe?.time ?? "—"} Mins</span>
-                        </div>
-
-                        <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
-                            <span aria-hidden>🍽</span>
-                            <span>
-                                {recipe?.servings ? `${recipe.servings} Pers.` : "—"}
-                            </span>
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
+                                <span aria-hidden>🍽</span>
+                                <span>
+                                    {recipe?.servings ? `${recipe.servings} Pers.` : "—"}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -71,7 +71,6 @@ export default function RecipeDetails() {
                 </div>
 
                 <div className="mt-8 grid gap-6 items-start md:grid-cols-[1fr_2fr]">
-
                     <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
                         <h2 className="text-primary text-xl font-extrabold">
                             Ingrédients
