@@ -22,6 +22,10 @@ export default function InputForm({ setIsOpen }) {
             .then((res) => {
                 localStorage.setItem("token", res.data.token);
                 localStorage.setItem("user", JSON.stringify(res.data.user));
+
+                // 🔔 Important: permet à Home/Navbar de se rafraîchir sans reload
+                window.dispatchEvent(new Event("authChanged"));
+
                 setIsOpen();
             })
             .catch((data) => setError(data.response?.data?.error || "Erreur"));

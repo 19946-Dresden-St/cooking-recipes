@@ -1,27 +1,52 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "./Modal.jsx";
 import InputForm from "./InputForm.jsx";
-import { NavLink } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    let token = localStorage.getItem("token");
-    const [isLogin, setIsLogin] = useState(token ? true : false);
-    let user = JSON.parse(localStorage.getItem("user"));
+    // Source of truth = localStorage, mais on garde un state pour déclencher des re-renders
+    const [auth, setAuth] = useState(() => {
+        const token = localStorage.getItem("token");
+        const user = JSON.parse(localStorage.getItem("user"));
+        return { token, user };
+    });
+
+    const isAuthenticated = useMemo(() => Boolean(auth.token), [auth.token]);
+
+    const syncAuthFromStorage = () => {
+        const token = localStorage.getItem("token");
+        const user = JSON.parse(localStorage.getItem("user"));
+        setAuth({ token, user });
+    };
 
     useEffect(() => {
-        setIsLogin(token ? false : true);
-    }, [token]);
+        // 1) si un autre onglet change le localStorage
+        const onStorage = (e) => {
+            if (e.key === "token" || e.key === "user") syncAuthFromStorage();
+        };
+
+        // 2) event custom (connexion/déconnexion dans cet onglet)
+        const onAuthChanged = () => syncAuthFromStorage();
+
+        window.addEventListener("storage", onStorage);
+        window.addEventListener("authChanged", onAuthChanged);
+
+        return () => {
+            window.removeEventListener("storage", onStorage);
+            window.removeEventListener("authChanged", onAuthChanged);
+        };
+    }, []);
 
     const checkLogin = () => {
-        if (token) {
+        if (isAuthenticated) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
-            setIsLogin(true);
+            window.dispatchEvent(new Event("authChanged"));
+
             setIsMenuOpen(false);
             navigate("/", { replace: true });
         } else {
@@ -31,7 +56,7 @@ export default function Navbar() {
     };
 
     const openLoginIfNeeded = (e) => {
-        if (isLogin) {
+        if (!isAuthenticated) {
             e.preventDefault();
             setIsOpen(true);
             setIsMenuOpen(false);
@@ -90,8 +115,7 @@ export default function Navbar() {
                                 onClick={checkLogin}
                                 className="text-primary font-semibold hover:text-accent hover:cursor-pointer transition duration-300"
                             >
-                                {isLogin ? "Connexion" : "Se déconnecter"}
-                                {user?.username ? ` (${user.username})` : ""}
+                                {isAuthenticated ? "Se déconnecter" : "Connexion"}
                             </button>
                         </li>
                     </ul>
@@ -148,8 +172,7 @@ export default function Navbar() {
                                 onClick={checkLogin}
                                 className="text-left text-primary font-semibold hover:text-accent transition duration-300 px-4 py-1.5"
                             >
-                                {isLogin ? "Connexion" : "Se déconnecter"}
-                                {user?.username ? ` (${user.username})` : ""}
+                                {isAuthenticated ? "Se déconnecter" : "Connexion"}
                             </button>
                         </div>
                     </div>

@@ -1,42 +1,60 @@
-import React from 'react'
+import React, { useEffect, useState } from "react";
 import usePageTitle from "../hooks/usePageTitle.js";
-import foodRecipe from '../assets/cookies.jpeg'
 import heroImg from "../assets/heroSection.jpg";
 import RecipeItems from "../components/RecipeItems.jsx";
-import {NavLink, useNavigate, useLocation} from "react-router-dom";
 import Modal from "../components/Modal.jsx";
 import InputForm from "../components/InputForm.jsx";
-import { useEffect } from "react";
-
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function Home() {
-
     usePageTitle("Qu'est-ce qu'on mange ? | Accueil");
 
     const location = useLocation();
+    const navigate = useNavigate();
+
+    const [isOpen, setIsOpen] = useState(false);
+
+    // user pour afficher "Hello <username>" quand connecté
+    const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("user")));
+    const [token, setToken] = useState(() => localStorage.getItem("token"));
+
+    const syncAuthFromStorage = () => {
+        setToken(localStorage.getItem("token"));
+        setUser(JSON.parse(localStorage.getItem("user")));
+    };
+
+    useEffect(() => {
+        const onStorage = (e) => {
+            if (e.key === "token" || e.key === "user") syncAuthFromStorage();
+        };
+        const onAuthChanged = () => syncAuthFromStorage();
+
+        window.addEventListener("storage", onStorage);
+        window.addEventListener("authChanged", onAuthChanged);
+
+        return () => {
+            window.removeEventListener("storage", onStorage);
+            window.removeEventListener("authChanged", onAuthChanged);
+        };
+    }, []);
 
     useEffect(() => {
         if (location.hash) {
             const id = location.hash.replace("#", "");
             const element = document.getElementById(id);
-
-            if (element) {
-                element.scrollIntoView({ behavior: "smooth" });
-            }
+            if (element) element.scrollIntoView({ behavior: "smooth" });
         }
     }, [location]);
 
-    const navigate = useNavigate()
-    const [isOpen, setIsOpen] = React.useState(false)
-
     const addRecipe = () => {
-        let token = localStorage.getItem("token")
-        if(token) {
-            navigate("/addRecipe")
+        if (token) {
+            navigate("/addRecipe");
         } else {
-            setIsOpen(true)
+            setIsOpen(true);
         }
-    }
+    };
+
+    const showHello = Boolean(token && user?.username);
 
     return (
         <>
@@ -53,17 +71,14 @@ export default function Home() {
                     <div className="w-full px-6 md:px-12">
                         <div className="max-w-xl">
                             <h1 className="text-white">
-                                Repas de Merde !
+                                {showHello ? `Hello ${user.username} ! 👋` : "Repas de Merde !"}
                             </h1>
 
                             <h2 className="mt-4 text-lg md:text-2xl font-semibold text-white/90">
-                                Des recettes simples, rapides, et (vraiment) bonnes.
+                                {showHello ? "Que mange-t-on de bon aujourd'hui ?" : "Des recettes simples, rapides, et (vraiment) bonnes."}
                             </h2>
 
-                            <a
-                                href="#recipesList"
-                                className="btn-primary inline-block mt-8"
-                            >
+                            <a href="#recipesList" className="btn-primary inline-block mt-8">
                                 Découvrir les recettes
                             </a>
                         </div>
@@ -71,17 +86,14 @@ export default function Home() {
                 </div>
             </section>
 
-            {
-                isOpen && (
-                    <Modal onClose={() => setIsOpen(false)}>
-                        <InputForm setIsOpen={()=>setIsOpen(false)} />
-                    </Modal>
-                )
-            }
+            {isOpen && (
+                <Modal onClose={() => setIsOpen(false)}>
+                    <InputForm setIsOpen={() => setIsOpen(false)} />
+                </Modal>
+            )}
 
             <section id="recipesList" className="scroll-mt-24 bg-secondary py-16">
                 <div className="mx-auto container">
-
                     <h2 className="mb-10">
                         <span className="relative inline-block">
                             Toutes les recettes
@@ -92,7 +104,6 @@ export default function Home() {
                     <RecipeItems />
                 </div>
             </section>
-
         </>
-    )
+    );
 }
