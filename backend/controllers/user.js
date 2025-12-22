@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -5,7 +6,6 @@ const jwt = require("jsonwebtoken");
 const normalizeUsername = (value) =>
     String(value ?? "")
         .trim()
-        .toLowerCase();
 
 const userSignUp = async (req, res) => {
     try {
@@ -25,7 +25,20 @@ const userSignUp = async (req, res) => {
             });
         }
 
-        const existingUser = await User.findOne({ username: normalized });
+        // ✅ Debug utile (maintenant mongoose est défini)
+        console.log(
+            "Mongo connected to DB:",
+            mongoose.connection.name,
+            "| host:",
+            mongoose.connection.host
+        );
+
+        // ✅ Collation pour éviter les soucis si tu as déjà des usernames pas normalisés en DB
+        const existingUser = await User.findOne({ username: normalized }).collation({
+            locale: "en",
+            strength: 2, // insensible à la casse
+        });
+
         if (existingUser) {
             return res.status(400).json({
                 error: "Username already exists",
@@ -36,7 +49,6 @@ const userSignUp = async (req, res) => {
 
         const newUser = await User.create({
             username: normalized,
-            email: email ? String(email).trim().toLowerCase() : undefined,
             password: hashPwd,
             role: 1,
         });
@@ -59,9 +71,15 @@ const userSignUp = async (req, res) => {
                 role: newUser.role,
             },
         });
-
     } catch (error) {
-        return res.status(500).json({ error: "Signup error" });
+        console.error("Signup error:", error);
+
+        // Duplicate key Mongo (ex: username unique)
+        if (error && error.code === 11000) {
+            return res.status(400).json({ error: "Username already exists" });
+        }
+
+        return res.status(500).json({ error: error?.message || "Signup error" });
     }
 };
 
@@ -77,7 +95,9 @@ const userLogin = async (req, res) => {
 
         const normalized = normalizeUsername(username);
 
-        const user = await User.findOne({ username: normalized }).select("+password");
+        const user = await User.findOne({ username: normalized })
+            .collation({ locale: "en", strength: 2 })
+            .select("+password");
 
         if (!user) {
             return res.status(400).json({
@@ -95,13 +115,12 @@ const userLogin = async (req, res) => {
         const token = jwt.sign(
             {
                 id: user._id,
-                username: newUser.username,
-                role: newUser.role,
+                username: user.username,
+                role: user.role,
             },
             process.env.SECRET_KEY,
             { expiresIn: "24h" }
         );
-
 
         return res.status(200).json({
             token,
@@ -111,9 +130,9 @@ const userLogin = async (req, res) => {
                 role: user.role,
             },
         });
-
     } catch (error) {
-        return res.status(500).json({ error: "Login error" });
+        console.error("Login error:", error);
+        return res.status(500).json({ error: error?.message || "Login error" });
     }
 };
 

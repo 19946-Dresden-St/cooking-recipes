@@ -10,12 +10,6 @@ const userSchema = new mongoose.Schema(
             minlength: 3,
             maxlength: 30,
         },
-        email: {
-            type: String,
-            required: false,
-            trim: true,
-            lowercase: true,
-        },
         role: {
             type: Number,
             enum: [0, 1],
