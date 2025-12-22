@@ -28,7 +28,7 @@ const recipeSchema = new mongoose.Schema(
         },
         category: {
             type: String,
-            enum: ["apero", "entree", "plat", "dessert", "boisson", "brunch"],
+            enum: ["apero", "entree", "plat", "sauce", "dessert", "boisson", "brunch"],
             default: "plat",
             required: true,
         },

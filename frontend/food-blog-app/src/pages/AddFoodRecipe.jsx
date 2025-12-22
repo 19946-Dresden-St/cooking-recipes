@@ -300,7 +300,7 @@ export default function AddFoodRecipe() {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeIngredientInput(idx)}
-                                                    className="rounded-full px-3 py-2 text-zinc-500 hover:bg-secondary"
+                                                    className="inline-flex h-8 w-8 items-center justify-center text-zinc-400 hover:text-primary hover:pointer-cursor transition duration-600"
                                                     aria-label="Supprimer l’ingrédient"
                                                     title="Supprimer"
                                                 >
@@ -368,7 +368,7 @@ export default function AddFoodRecipe() {
                                                     <button
                                                         type="button"
                                                         onClick={() => removeInstructionInput(idx)}
-                                                        className="rounded-full px-3 py-2 text-zinc-500 hover:bg-secondary"
+                                                        className="inline-flex h-8 w-8 items-center justify-center text-zinc-400 hover:text-primary hover:pointer-cursor transition duration-600"
                                                         aria-label="Supprimer l’étape"
                                                         title="Supprimer"
                                                     >
