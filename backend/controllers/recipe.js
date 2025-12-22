@@ -40,7 +40,12 @@ const getRandomRecipes = async (req, res) => {
         const countParsed = Number.parseInt(countRaw, 10);
         const count = Number.isFinite(countParsed) && countParsed > 0 ? Math.min(countParsed, 50) : 1;
 
-        const category = (req.query.category || "plat").toString().trim();
+        // ✅ accepte "plat" ou "plat,entree,dessert"
+        const categoryRaw = (req.query.category || "plat").toString().trim();
+        const categories = categoryRaw
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
 
         const excludeRaw = (req.query.exclude || "").toString().trim();
         const excludeIds = excludeRaw
@@ -60,8 +65,14 @@ const getRandomRecipes = async (req, res) => {
 
         const match = {};
 
-        // category is optional, but default is "plat"
-        if (category) match.category = category;
+        // ✅ match category: 1 -> égalité, plusieurs -> $in
+        if (categories.length === 1) {
+            match.category = categories[0];
+        } else if (categories.length > 1) {
+            match.category = { $in: categories };
+        } else {
+            match.category = "plat";
+        }
 
         if (excludeIds.length > 0) {
             match._id = { $nin: excludeIds };

@@ -8,7 +8,7 @@ export const CATEGORY_MAP = {
     sauce: "🥫 Sauce",
 };
 
-export const CATEGORY_ORDER = ["apero", "entree", "plat", "dessert", "boisson", "brunch", "sauce"];
+export const CATEGORY_ORDER = ["brunch", "apero", "entree", "plat", "dessert", "boisson", "sauce"];
 
 export const getCategoryLabel = (category) => {
     return CATEGORY_MAP[category] ?? "Plat";
