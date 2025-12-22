@@ -94,7 +94,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                         <Link
                             to={`/editRecipe/${item._id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
+                            className="rounded-full p-2 text-orange-500 hover:text-orange-600 hover:bg-secondary transition duration-600"
                             aria-label="Éditer"
                             title="Éditer"
                         >
@@ -106,7 +106,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                                 e.stopPropagation();
                                 onRequestDelete(item);
                             }}
-                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
+                            className="hover:cursor-pointer rounded-full p-2 text-red-700 hover:text-red-800 hover:bg-secondary transition duration-600"
                             aria-label="Supprimer"
                             title="Supprimer"
                         >
