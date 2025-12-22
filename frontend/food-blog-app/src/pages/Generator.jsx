@@ -51,12 +51,10 @@ export default function Generator() {
         setLoading(true);
         setError("");
         try {
-            // We try to keep things unique; if the DB is too small, we may end up with fewer unique recipes.
             const wanted = mealsCount;
             let exclude = [];
             let picked = [];
 
-            // Try a few rounds to fill up.
             for (let round = 0; round < 5 && picked.length < wanted; round++) {
                 const need = wanted - picked.length;
                 const batch = await fetchRandomRecipes({ count: need, excludeIds: exclude });
@@ -65,7 +63,6 @@ export default function Generator() {
                 exclude = [...exclude, ...batch.map((r) => r?._id).filter(Boolean)];
             }
 
-            // If still not enough, allow duplicates (DB too small)
             while (picked.length < wanted) {
                 const batch = await fetchRandomRecipes({ count: wanted - picked.length, excludeIds: [] });
                 if (batch.length === 0) break;
@@ -92,7 +89,6 @@ export default function Generator() {
 
     const regenerateOne = useCallback(
         async ({ dayIndex, slot }) => {
-            // slot: "lunch" | "dinner"
             setLoading(true);
             setError("");
             try {
@@ -101,9 +97,11 @@ export default function Generator() {
                     return id && id !== current;
                 });
 
-                // If DB too small, we might get empty; then allow duplicates.
                 const firstTry = await fetchRandomRecipes({ count: 1, excludeIds: exclude });
-                const replacement = firstTry?.[0] ?? (await fetchRandomRecipes({ count: 1, excludeIds: [] }))?.[0] ?? null;
+                const replacement =
+                    firstTry?.[0] ??
+                    (await fetchRandomRecipes({ count: 1, excludeIds: [] }))?.[0] ??
+                    null;
 
                 setMenus((prev) =>
                     prev.map((m) => {
@@ -122,7 +120,6 @@ export default function Generator() {
     );
 
     useEffect(() => {
-        // Generate an initial set so the page isn't empty.
         generateMenus();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -130,13 +127,12 @@ export default function Generator() {
     return (
         <section className="container py-8">
             <div className="flex flex-col gap-6">
-
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-                            <span className="relative inline-block">
-                                Mes recettes
-                                <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                            </span>
+                        <span className="relative inline-block">
+                            Mes recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Retrouve ici toutes les recettes que tu as partagées.
@@ -195,10 +191,7 @@ export default function Generator() {
                         </button>
                     </div>
 
-
-                    {error && (
-                        <p className="mt-3 text-sm text-red-600">{error}</p>
-                    )}
+                    {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -211,21 +204,26 @@ export default function Generator() {
                                 <h3 className="text-primary font-extrabold">
                                     Jour {menu.dayIndex + 1}
                                 </h3>
-                                <span className="text-xs text-zinc-500">Midi + Soir</span>
                             </div>
 
-                            <div className="space-y-3">
-                                <GeneratorRecipeCard
-                                    label="Midi"
-                                    recipe={menu.lunch}
-                                    onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, slot: "lunch" })}
-                                />
-                                <GeneratorRecipeCard
-                                    label="Soir"
-                                    recipe={menu.dinner}
-                                    onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, slot: "dinner" })}
-                                />
-                            </div>
+                            <GeneratorRecipeCard
+                                embedded
+                                label="Midi"
+                                recipe={menu.lunch}
+                                onRegenerate={() =>
+                                    regenerateOne({ dayIndex: menu.dayIndex, slot: "lunch" })
+                                }
+                            />
+                            <hr className="border-0 h-px bg-zinc-200 my-1" />
+                            <GeneratorRecipeCard
+                                embedded
+                                label="Soir"
+                                recipe={menu.dinner}
+                                onRegenerate={() =>
+                                    regenerateOne({ dayIndex: menu.dayIndex, slot: "dinner" })
+                                }
+                            />
+
                         </div>
                     ))}
                 </div>
