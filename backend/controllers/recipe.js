@@ -16,6 +16,14 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const normalizeStringArray = (value) => {
+    if (value === undefined || value === null) return [];
+    const arr = Array.isArray(value) ? value : [value];
+    return arr
+        .map((v) => (v ?? "").toString().trim())
+        .filter(Boolean);
+};
+
 const getRecipes = async (req, res) => {
     const recipes = await Recipes.find();
     return res.json(recipes);
@@ -30,7 +38,10 @@ const addRecipe = async (req, res) => {
     try {
         const { title, ingredients, instructions, time, category, servings } = req.body;
 
-        if (!title || !ingredients || !instructions || !time) {
+        const cleanedIngredients = normalizeStringArray(ingredients);
+        const cleanedInstructions = normalizeStringArray(instructions);
+
+        if (!title || !time || cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
             return res.status(400).json({
                 message:
                     "Le nom, le temps, les ingrédients et les instructions sont requis.",
@@ -44,7 +55,6 @@ const addRecipe = async (req, res) => {
             });
         }
 
-        // ✅ servings (optionnel côté front, default 4 sinon)
         const parsedServings =
             servings === undefined || servings === null || servings === ""
                 ? 4
@@ -60,8 +70,8 @@ const addRecipe = async (req, res) => {
 
         const newRecipe = await Recipes.create({
             title,
-            ingredients,
-            instructions,
+            ingredients: cleanedIngredients,
+            instructions: cleanedInstructions,
             time: parsedTime,
             servings: parsedServings,
             category: category || "plat",
@@ -83,7 +93,6 @@ const editRecipe = async (req, res) => {
             return res.status(404).json({ message: "Recipe not found" });
         }
 
-        // ✅ si nouvelle image : supprimer l'ancienne
         let coverImage = recipe.coverImage;
 
         if (req.file) {
@@ -106,8 +115,25 @@ const editRecipe = async (req, res) => {
             coverImage = req.file.filename;
         }
 
-        // ✅ validations time/servings si présents dans req.body
         const updateData = { ...req.body, coverImage };
+
+        if (updateData.ingredients !== undefined) {
+            updateData.ingredients = normalizeStringArray(updateData.ingredients);
+            if (updateData.ingredients.length === 0) {
+                return res.status(400).json({
+                    message: "Ajoute au moins un ingrédient.",
+                });
+            }
+        }
+
+        if (updateData.instructions !== undefined) {
+            updateData.instructions = normalizeStringArray(updateData.instructions);
+            if (updateData.instructions.length === 0) {
+                return res.status(400).json({
+                    message: "Ajoute au moins une instruction.",
+                });
+            }
+        }
 
         if (updateData.time !== undefined) {
             const parsedTime = Number(updateData.time);

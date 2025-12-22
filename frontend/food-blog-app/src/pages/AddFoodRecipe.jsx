@@ -16,7 +16,7 @@ export default function AddFoodRecipe() {
         category: "plat",
         time: "",
         servings: 4,
-        instructions: "",
+        instructions: [], // Array<string>
         ingredients: [], // Array<string>
         file: null,
     });
@@ -37,6 +37,64 @@ export default function AddFoodRecipe() {
         setRecipeData((prev) => ({ ...prev, ingredients: cleaned }));
     }, []);
 
+    const onIngredientChange = (idx, value) => {
+        setIngredientInputs((prev) => {
+            const next = [...prev];
+            next[idx] = value;
+            syncIngredientsToRecipeData(next);
+            return next;
+        });
+    };
+
+    const addIngredientInput = () => {
+        setIngredientInputs((prev) => [...prev, ""]);
+    };
+
+    const removeIngredientInput = (idx) => {
+        setIngredientInputs((prev) => {
+            const next = prev.filter((_, i) => i !== idx);
+            syncIngredientsToRecipeData(next);
+            return next.length ? next : [""];
+        });
+    };
+
+    // ✅ Instructions / étapes (UI)
+    const [instructionsStepReady, setInstructionsStepReady] = React.useState(false);
+    const [instructionsCount, setInstructionsCount] = React.useState(3);
+    const [instructionInputs, setInstructionInputs] = React.useState([]); // Array<string>
+
+    const generateInstructionInputs = (count) => {
+        const safeCount = Math.max(1, Number(count) || 1);
+        setInstructionInputs(Array.from({ length: safeCount }, () => ""));
+        setInstructionsStepReady(true);
+    };
+
+    const syncInstructionsToRecipeData = React.useCallback((inputs) => {
+        const cleaned = inputs.map((s) => (s ?? "").trim()).filter(Boolean);
+        setRecipeData((prev) => ({ ...prev, instructions: cleaned }));
+    }, []);
+
+    const onInstructionChange = (idx, value) => {
+        setInstructionInputs((prev) => {
+            const next = [...prev];
+            next[idx] = value;
+            syncInstructionsToRecipeData(next);
+            return next;
+        });
+    };
+
+    const addInstructionInput = () => {
+        setInstructionInputs((prev) => [...prev, ""]);
+    };
+
+    const removeInstructionInput = (idx) => {
+        setInstructionInputs((prev) => {
+            const next = prev.filter((_, i) => i !== idx);
+            syncInstructionsToRecipeData(next);
+            return next.length ? next : [""];
+        });
+    };
+
     const onHandleChange = (e) => {
         const { name, value, files } = e.target;
 
@@ -48,31 +106,6 @@ export default function AddFoodRecipe() {
         setRecipeData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const onIngredientChange = (idx, value) => {
-        setIngredientInputs((prev) => {
-            const next = [...prev];
-            next[idx] = value;
-            syncIngredientsToRecipeData(next);
-            return next;
-        });
-    };
-
-    const addIngredientInput = () => {
-        setIngredientInputs((prev) => {
-            const next = [...prev, ""];
-            // Pas besoin de sync ici ("" ignoré)
-            return next;
-        });
-    };
-
-    const removeIngredientInput = (idx) => {
-        setIngredientInputs((prev) => {
-            const next = prev.filter((_, i) => i !== idx);
-            syncIngredientsToRecipeData(next);
-            return next.length ? next : [""];
-        });
-    };
-
     const onHandleSubmit = async (e) => {
         e.preventDefault();
 
@@ -80,12 +113,16 @@ export default function AddFoodRecipe() {
 
         try {
             // ✅ Validation ingrédients : au moins 1 non vide
-            const cleanedIngredients = ingredientInputs
-                .map((s) => (s ?? "").trim())
-                .filter(Boolean);
-
+            const cleanedIngredients = ingredientInputs.map((s) => (s ?? "").trim()).filter(Boolean);
             if (cleanedIngredients.length === 0) {
                 toast.error("Ajoute au moins un ingrédient.", { id: toastId });
+                return;
+            }
+
+            // ✅ Validation instructions : au moins 1 étape non vide
+            const cleanedInstructions = instructionInputs.map((s) => (s ?? "").trim()).filter(Boolean);
+            if (cleanedInstructions.length === 0) {
+                toast.error("Ajoute au moins une étape d’instruction.", { id: toastId });
                 return;
             }
 
@@ -94,9 +131,9 @@ export default function AddFoodRecipe() {
             formData.append("category", recipeData.category);
             formData.append("time", recipeData.time);
             formData.append("servings", recipeData.servings);
-            formData.append("instructions", recipeData.instructions);
 
             cleanedIngredients.forEach((ing) => formData.append("ingredients", ing));
+            cleanedInstructions.forEach((step) => formData.append("instructions", step));
 
             if (recipeData.file) {
                 formData.append("file", recipeData.file);
@@ -112,8 +149,7 @@ export default function AddFoodRecipe() {
             navigate("/myRecipe");
         } catch (error) {
             toast.error(
-                error?.response?.data?.message ||
-                "Une erreur est survenue lors de l’ajout de la recette.",
+                error?.response?.data?.message || "Une erreur est survenue lors de l’ajout de la recette.",
                 { id: toastId }
             );
         }
@@ -123,10 +159,10 @@ export default function AddFoodRecipe() {
         <section className="bg-secondary py-10 md:py-14">
             <div className="mx-auto container">
                 <h2 className="mb-10">
-                    <span className="relative inline-block">
-                        Ajouter une recette
-                        <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                    </span>
+          <span className="relative inline-block">
+            Ajouter une recette
+            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+          </span>
                 </h2>
 
                 <form onSubmit={onHandleSubmit} className="space-y-8">
@@ -166,9 +202,7 @@ export default function AddFoodRecipe() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-zinc-800">
-                                    Temps (en minutes)
-                                </label>
+                                <label className="text-sm font-semibold text-zinc-800">Temps (en minutes)</label>
                                 <input
                                     type="number"
                                     name="time"
@@ -183,9 +217,7 @@ export default function AddFoodRecipe() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-zinc-800">
-                                    Nombre de personnes
-                                </label>
+                                <label className="text-sm font-semibold text-zinc-800">Nombre de personnes</label>
                                 <input
                                     type="number"
                                     name="servings"
@@ -216,9 +248,7 @@ export default function AddFoodRecipe() {
 
                             {!ingredientsStepReady ? (
                                 <div className="space-y-3">
-                                    <label className="text-sm font-semibold text-zinc-800">
-                                        Combien d’ingrédients ?
-                                    </label>
+                                    <label className="text-sm font-semibold text-zinc-800">Combien d’ingrédients ?</label>
                                     <div className="flex items-center gap-3">
                                         <input
                                             type="number"
@@ -236,9 +266,7 @@ export default function AddFoodRecipe() {
                                             Générer
                                         </button>
                                     </div>
-                                    <p className="text-xs text-zinc-500">
-                                        Ensuite, tu peux en ajouter d’autres si besoin.
-                                    </p>
+                                    <p className="text-xs text-zinc-500">Ensuite, tu peux en ajouter d’autres si besoin.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -281,11 +309,7 @@ export default function AddFoodRecipe() {
                                         ))}
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={addIngredientInput}
-                                        className="btn-secondary-sm w-full"
-                                    >
+                                    <button type="button" onClick={addIngredientInput} className="btn-secondary-sm w-full">
                                         + Ajouter un ingrédient
                                     </button>
                                 </div>
@@ -296,23 +320,94 @@ export default function AddFoodRecipe() {
                         <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 space-y-4">
                             <h2 className="text-primary text-xl font-extrabold">Instructions</h2>
 
-                            <textarea
-                                name="instructions"
-                                rows="12"
-                                onChange={onHandleChange}
-                                value={recipeData.instructions}
-                                placeholder="Explique les étapes clairement"
-                                className="textarea"
-                                required
-                            />
+                            {!instructionsStepReady ? (
+                                <div className="space-y-3">
+                                    <label className="text-sm font-semibold text-zinc-800">Combien d’étapes ?</label>
+                                    <div className="flex items-center gap-3">
+                                        <input
+                                            type="number"
+                                            className="input"
+                                            min={1}
+                                            step={1}
+                                            value={instructionsCount}
+                                            onChange={(e) => setInstructionsCount(e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => generateInstructionInputs(instructionsCount)}
+                                            className="btn-primary-sm whitespace-nowrap"
+                                        >
+                                            Générer
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-zinc-500">Ensuite, tu peux en ajouter d’autres si besoin.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-xs text-zinc-500">Une étape par bloc.</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setInstructionsStepReady(false);
+                                                setInstructionInputs([]);
+                                                setRecipeData((p) => ({ ...p, instructions: [] }));
+                                            }}
+                                            className="text-xs font-semibold text-primary hover:opacity-80 hover:cursor-pointer"
+                                        >
+                                            Reconfigurer
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {instructionInputs.map((val, idx) => (
+                                            <div key={idx} className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <p className="text-sm font-semibold text-zinc-800">Étape {idx + 1}</p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeInstructionInput(idx)}
+                                                        className="rounded-full px-3 py-2 text-zinc-500 hover:bg-secondary"
+                                                        aria-label="Supprimer l’étape"
+                                                        title="Supprimer"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+
+                                                <textarea
+                                                    rows={4}
+                                                    className="textarea"
+                                                    placeholder={
+                                                        idx === 0
+                                                            ? "Ex : Fais fondre le beurre…"
+                                                            : "Ex : Ajoute la farine puis mélange…"
+                                                    }
+                                                    value={val}
+                                                    onChange={(e) => onInstructionChange(idx, e.target.value)}
+                                                    required={idx === 0}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button type="button" onClick={addInstructionInput} className="btn-secondary-sm w-full">
+                                        + Ajouter une étape
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     <button
                         type="submit"
                         className="w-full btn-primary"
-                        disabled={!ingredientsStepReady}
-                        title={!ingredientsStepReady ? "Commence par générer les champs ingrédients" : undefined}
+                        disabled={!ingredientsStepReady || !instructionsStepReady}
+                        title={
+                            !ingredientsStepReady || !instructionsStepReady
+                                ? "Commence par générer les champs ingrédients et instructions"
+                                : undefined
+                        }
                     >
                         Ajouter la recette
                     </button>
