@@ -1,17 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { BsFillStopwatchFill } from "react-icons/bs";
 import { FaHeart } from "react-icons/fa6";
 import { FaEdit } from "react-icons/fa";
-import { FaAppleAlt } from "react-icons/fa";
-import { BiRestaurant } from "react-icons/bi";
 import { MdDelete } from "react-icons/md";
 import { motion } from "framer-motion";
 import { API_BASE_URL } from "../apiBase";
 import placeholderImg from "../assets/heroSection.jpg";
 import { getBadgeClass, getCategoryLabel } from "../utils/categories";
 
-export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDelete, onOpen}) {
+export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDelete, onOpen }) {
     const categoryValue = item?.category ?? "entree";
     const categoryLabel = getCategoryLabel(categoryValue);
     const badgeClass = getBadgeClass(categoryValue);
@@ -38,20 +35,19 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                     loading="lazy"
                 />
 
-                {!path && (
-                    <motion.button
-                        whileTap={{ scale: 1.2 }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleFav(item);
-                        }}
-                        className="absolute top-3 right-3 rounded-full bg-white/90 p-2 shadow-md transition"
-                        aria-label={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
-                        title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
-                    >
-                        <FaHeart className={`text-lg ${isFav ? "text-primary" : "text-zinc-400"}`} />
-                    </motion.button>
-                )}
+                {/* ❤️ Favoris : visible partout */}
+                <motion.button
+                    whileTap={{ scale: 1.2 }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFav(item);
+                    }}
+                    className="absolute top-3 right-3 rounded-full bg-white/90 p-2 shadow-md transition"
+                    aria-label={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+                    title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+                >
+                    <FaHeart className={`text-lg ${isFav ? "text-primary" : "text-zinc-400"}`} />
+                </motion.button>
             </div>
 
             <div className="p-4 space-y-3">
@@ -94,7 +90,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                         <Link
                             to={`/editRecipe/${item._id}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="rounded-full p-2 text-orange-500 hover:text-orange-600 hover:bg-secondary transition duration-600"
+                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
                             aria-label="Éditer"
                             title="Éditer"
                         >
@@ -106,7 +102,7 @@ export default function RecipeCard({item, path, isFav, onToggleFav, onRequestDel
                                 e.stopPropagation();
                                 onRequestDelete(item);
                             }}
-                            className="hover:cursor-pointer rounded-full p-2 text-red-700 hover:text-red-800 hover:bg-secondary transition duration-600"
+                            className="rounded-full p-2 text-zinc-500 transition hover:bg-secondary hover:text-zinc-800"
                             aria-label="Supprimer"
                             title="Supprimer"
                         >

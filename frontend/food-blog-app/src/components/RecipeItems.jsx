@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLoaderData, useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast from "react-hot-toast";
 import { API_BASE_URL } from "../apiBase.js";
 import CategoryFilterBar from "../components/CategoryFilterBar";
 import RecipeCard from "../components/RecipeCard";
@@ -97,6 +98,15 @@ export default function RecipeItems() {
     };
 
     const favRecipe = (item) => {
+        // 🔒 Favoris uniquement si connecté
+        const token = localStorage.getItem("token");
+        if (!token) {
+            toast.error("Connecte-toi pour ajouter des favoris.");
+            // Ouvre la modale de connexion depuis n'importe quelle page
+            window.dispatchEvent(new Event("openAuthModal"));
+            return;
+        }
+
         const filteredItems = favItems.filter((recipe) => recipe._id !== item._id);
 
         favItems =
@@ -123,9 +133,7 @@ export default function RecipeItems() {
     // 🔍 FILTRAGE FINAL
     const filteredRecipes = allRecipes
         .filter((r) =>
-            selectedCategory === "all"
-                ? true
-                : (r?.category ?? "plat") === selectedCategory
+            selectedCategory === "all" ? true : (r?.category ?? "plat") === selectedCategory
         )
         .filter(matchesTime)
         .filter((r) =>
@@ -134,12 +142,9 @@ export default function RecipeItems() {
 
     return (
         <div className="space-y-6">
-            {/* 🔍 BARRE DE RECHERCHE AVEC ICÔNE */}
+            {/* 🔍 BARRE DE RECHERCHE */}
             <div className="relative">
-                {/* Icône loupe */}
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          🔍
-        </span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
 
                 <input
                     type="text"
@@ -149,15 +154,10 @@ export default function RecipeItems() {
                     className="input pl-10"
                 />
 
-                {/* Bouton reset */}
                 {searchTerm && (
                     <button
                         onClick={clearSearch}
-                        className="
-              absolute right-3 top-1/2 -translate-y-1/2
-              text-gray-400 hover:text-gray-700
-              text-lg
-            "
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg"
                         aria-label="Effacer la recherche"
                     >
                         ✕
@@ -165,7 +165,7 @@ export default function RecipeItems() {
                 )}
             </div>
 
-            {/* 🏷 CATÉGORIES (gauche) + ⏱ TEMPS (droite) */}
+            {/* 🏷 CATÉGORIES + ⏱ TEMPS */}
             <CategoryFilterBar
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}

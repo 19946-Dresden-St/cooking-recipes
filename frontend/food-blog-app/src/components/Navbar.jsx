@@ -4,49 +4,65 @@ import InputForm from "./InputForm.jsx";
 import { NavLink, useNavigate } from "react-router-dom";
 
 export default function Navbar() {
-    const [isOpen, setIsOpen] = useState(false);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const navigate = useNavigate();
 
-    // Source of truth = localStorage, mais on garde un state pour déclencher des re-renders
-    const [auth, setAuth] = useState(() => {
-        const token = localStorage.getItem("token");
-        const user = JSON.parse(localStorage.getItem("user"));
-        return { token, user };
+    const [isOpen, setIsOpen] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    // ✅ Auth (synchro localStorage + events)
+    const [token, setToken] = useState(() => localStorage.getItem("token"));
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("user"));
+        } catch {
+            return null;
+        }
     });
 
-    const isAuthenticated = useMemo(() => Boolean(auth.token), [auth.token]);
+    const isLoggedIn = Boolean(token);
 
     const syncAuthFromStorage = () => {
-        const token = localStorage.getItem("token");
-        const user = JSON.parse(localStorage.getItem("user"));
-        setAuth({ token, user });
+        setToken(localStorage.getItem("token"));
+        try {
+            setUser(JSON.parse(localStorage.getItem("user")));
+        } catch {
+            setUser(null);
+        }
     };
 
     useEffect(() => {
-        // 1) si un autre onglet change le localStorage
         const onStorage = (e) => {
             if (e.key === "token" || e.key === "user") syncAuthFromStorage();
         };
-
-        // 2) event custom (connexion/déconnexion dans cet onglet)
         const onAuthChanged = () => syncAuthFromStorage();
+        const onOpenAuthModal = () => {
+            setIsOpen(true);
+            setIsMenuOpen(false);
+        };
 
         window.addEventListener("storage", onStorage);
         window.addEventListener("authChanged", onAuthChanged);
+        window.addEventListener("openAuthModal", onOpenAuthModal);
 
         return () => {
             window.removeEventListener("storage", onStorage);
             window.removeEventListener("authChanged", onAuthChanged);
+            window.removeEventListener("openAuthModal", onOpenAuthModal);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const loginButtonLabel = useMemo(() => {
+        // Si tu ne veux pas afficher le username dans la navbar :
+        // on garde juste "Connexion" / "Se déconnecter".
+        return isLoggedIn ? "Se déconnecter" : "Connexion";
+    }, [isLoggedIn]);
+
     const checkLogin = () => {
-        if (isAuthenticated) {
+        if (isLoggedIn) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
             window.dispatchEvent(new Event("authChanged"));
-
             setIsMenuOpen(false);
             navigate("/", { replace: true });
         } else {
@@ -56,7 +72,7 @@ export default function Navbar() {
     };
 
     const openLoginIfNeeded = (e) => {
-        if (!isAuthenticated) {
+        if (!isLoggedIn) {
             e.preventDefault();
             setIsOpen(true);
             setIsMenuOpen(false);
@@ -81,9 +97,7 @@ export default function Navbar() {
                             <NavLink
                                 to="/"
                                 end
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Accueil
                             </NavLink>
@@ -92,9 +106,7 @@ export default function Navbar() {
                             <NavLink
                                 to="/myRecipe"
                                 onClick={openLoginIfNeeded}
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Mes recettes
                             </NavLink>
@@ -103,9 +115,7 @@ export default function Navbar() {
                             <NavLink
                                 to="/favRecipe"
                                 onClick={openLoginIfNeeded}
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Mes Favoris
                             </NavLink>
@@ -115,7 +125,7 @@ export default function Navbar() {
                                 onClick={checkLogin}
                                 className="text-primary font-semibold hover:text-accent hover:cursor-pointer transition duration-300"
                             >
-                                {isAuthenticated ? "Se déconnecter" : "Connexion"}
+                                {loginButtonLabel}
                             </button>
                         </li>
                     </ul>
@@ -141,9 +151,7 @@ export default function Navbar() {
                                 to="/"
                                 end
                                 onClick={() => setIsMenuOpen(false)}
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Accueil
                             </NavLink>
@@ -151,9 +159,7 @@ export default function Navbar() {
                             <NavLink
                                 to="/myRecipe"
                                 onClick={openLoginIfNeeded}
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Mes recettes
                             </NavLink>
@@ -161,9 +167,7 @@ export default function Navbar() {
                             <NavLink
                                 to="/favRecipe"
                                 onClick={openLoginIfNeeded}
-                                className={({ isActive }) =>
-                                    isActive ? "nav-item-active" : "nav-item"
-                                }
+                                className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
                                 Mes Favoris
                             </NavLink>
@@ -172,7 +176,7 @@ export default function Navbar() {
                                 onClick={checkLogin}
                                 className="text-left text-primary font-semibold hover:text-accent transition duration-300 px-4 py-1.5"
                             >
-                                {isAuthenticated ? "Se déconnecter" : "Connexion"}
+                                {loginButtonLabel}
                             </button>
                         </div>
                     </div>
@@ -180,7 +184,12 @@ export default function Navbar() {
             </header>
 
             {isOpen && (
-                <Modal onClose={() => setIsOpen(false)}>
+                <Modal
+                    onClose={() => {
+                        setIsOpen(false);
+                        syncAuthFromStorage();
+                    }}
+                >
                     <InputForm setIsOpen={() => setIsOpen(false)} />
                 </Modal>
             )}
