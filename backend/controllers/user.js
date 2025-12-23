@@ -3,6 +3,7 @@ const {
     authenticateUser,
     getPublicUserById,
 } = require("../services/user.service");
+const httpError = require("../utils/httpError");
 
 /* ===== SIGN UP ===== */
 const userSignUp = async (req, res) => {
@@ -21,7 +22,7 @@ const getUser = async (req, res) => {
     const user = await getPublicUserById(req.params.id);
 
     if (!user) {
-        return res.status(404).json({ error: "User not found" });
+        throw httpError(404, "User not found");
     }
 
     return res.json({

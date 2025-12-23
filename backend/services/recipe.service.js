@@ -20,6 +20,15 @@ const getAllRecipes = async () => Recipes.find();
 
 const getRecipeById = async (id) => Recipes.findById(id);
 
+// version “safe” pour controller (évite de renvoyer null au front)
+const getRecipeByIdOrThrow = async (id) => {
+    const recipe = await Recipes.findById(id);
+    if (!recipe) {
+        throw httpError(404, "Recipe not found");
+    }
+    return recipe;
+};
+
 /* ===== RANDOM ===== */
 const getRandomRecipes = async ({ count = 1, categories = ["plat"], excludeIds = [] }) => {
     const match = {};
@@ -73,6 +82,7 @@ const deleteRecipeWithImage = async (id) => {
 module.exports = {
     getAllRecipes,
     getRecipeById,
+    getRecipeByIdOrThrow,
     getRandomRecipes,
     createRecipe,
     updateRecipeWithImage,

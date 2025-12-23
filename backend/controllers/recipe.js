@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
 const { normalizeStringArray } = require("../utils/normalize");
+const httpError = require("../utils/httpError");
 const {
     getAllRecipes,
-    getRecipeById,
+    getRecipeByIdOrThrow,
     getRandomRecipes: getRandomRecipesService,
     createRecipe,
     updateRecipeWithImage,
@@ -17,7 +18,7 @@ const getRecipes = async (req, res) => {
 
 /* ===== RECETTE PAR ID ===== */
 const getRecipe = async (req, res) => {
-    const recipe = await getRecipeById(req.params.id);
+    const recipe = await getRecipeByIdOrThrow(req.params.id);
     return res.json(recipe);
 };
 
@@ -56,21 +57,19 @@ const addRecipe = async (req, res) => {
     const cleanedInstructions = normalizeStringArray(instructions);
 
     if (!title || !time || cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
-        return res.status(400).json({
-            message: "Le nom, le temps, les ingrédients et les instructions sont requis.",
-        });
+        throw httpError(400, "Le nom, le temps, les ingrédients et les instructions sont requis.");
     }
 
     const parsedTime = Number(time);
     if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
-        return res.status(400).json({ message: "Le temps doit être un entier positif." });
+        throw httpError(400, "Le temps doit être un entier positif.");
     }
 
     const parsedServings =
         servings === undefined || servings === null || servings === "" ? 4 : Number(servings);
 
     if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
-        return res.status(400).json({ message: "Le nombre de personnes doit être un entier positif." });
+        throw httpError(400, "Le nombre de personnes doit être un entier positif.");
     }
 
     const coverImage = req.file ? req.file.filename : "heroSection.jpg";
@@ -95,21 +94,21 @@ const editRecipe = async (req, res) => {
     if (updateData.ingredients !== undefined) {
         updateData.ingredients = normalizeStringArray(updateData.ingredients);
         if (updateData.ingredients.length === 0) {
-            return res.status(400).json({ message: "Ajoute au moins un ingrédient." });
+            throw httpError(400, "Ajoute au moins un ingrédient.");
         }
     }
 
     if (updateData.instructions !== undefined) {
         updateData.instructions = normalizeStringArray(updateData.instructions);
         if (updateData.instructions.length === 0) {
-            return res.status(400).json({ message: "Ajoute au moins une instruction." });
+            throw httpError(400, "Ajoute au moins une instruction.");
         }
     }
 
     if (updateData.time !== undefined) {
         const parsedTime = Number(updateData.time);
         if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
-            return res.status(400).json({ message: "Le temps doit être un entier positif." });
+            throw httpError(400, "Le temps doit être un entier positif.");
         }
         updateData.time = parsedTime;
     }
@@ -117,7 +116,7 @@ const editRecipe = async (req, res) => {
     if (updateData.servings !== undefined) {
         const parsedServings = Number(updateData.servings);
         if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
-            return res.status(400).json({ message: "Le nombre de personnes doit être un entier positif." });
+            throw httpError(400, "Le nombre de personnes doit être un entier positif.");
         }
         updateData.servings = parsedServings;
     }

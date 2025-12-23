@@ -1,6 +1,5 @@
-module.exports = function notFound(req, res) {
-    return res.status(404).json({
-        message: "Not found",
-        error: "Not found",
-    });
+const httpError = require("../utils/httpError");
+
+module.exports = function notFound(req, res, next) {
+    return next(httpError(404, "Not found"));
 };
