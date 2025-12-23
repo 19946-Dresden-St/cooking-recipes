@@ -2,9 +2,10 @@ const bcrypt = require("bcrypt");
 
 const User = require("./models/user");
 const Recipe = require("./models/recipe");
+const { normalizeUsername, escapeRegex } = require("./utils/username");
 
 async function buildAdminRouter() {
-    // AdminJS est ESM -> import dynamique
+
     const AdminJSImport = await import("adminjs");
     const AdminJS = AdminJSImport.default || AdminJSImport;
 
@@ -53,12 +54,11 @@ async function buildAdminRouter() {
         admin,
         {
             authenticate: async (identifier, password) => {
-                const input = String(identifier || "").trim();
+                const input = normalizeUsername(identifier);
                 if (!input) return null;
 
-                // recherche insensible à la casse sur username
                 const user = await User.findOne({
-                    username: { $regex: new RegExp(`^${input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+                    username: { $regex: new RegExp(`^${escapeRegex(input)}$`, "i") },
                 }).select("+password role username");
 
                 if (!user) return null;
@@ -66,7 +66,6 @@ async function buildAdminRouter() {
                 const ok = await bcrypt.compare(password, user.password);
                 if (!ok) return null;
 
-                // accès réservé aux admins
                 if (user.role !== 0) return null;
 
                 return {
