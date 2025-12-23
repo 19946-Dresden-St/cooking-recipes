@@ -4,7 +4,6 @@ import { API_BASE_URL } from "../apiBase";
 import { CATEGORY_ORDER, getBadgeClass, getCategoryLabel } from "../utils/categories";
 import GeneratorRecipeCard from "../components/GeneratorRecipeCard";
 import usePageTitle from "../hooks/usePageTitle";
-const GENERATOR_EXCLUDED_CATEGORIES = ["boisson", "sauce"];
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -14,51 +13,82 @@ const clampInt = (value, min, max, fallback) => {
 
 const buildExcludeParam = (ids) => ids.filter(Boolean).join(",");
 
+const HIDDEN_ON_GENERATOR = new Set(["boisson", "sauce"]);
+
+const DAILY_CATEGORIES = new Set(["apero", "entree", "plat", "dessert"]);
+
+const DAILY_ORDER = ["apero", "entree", "plat", "dessert"];
+
+function SectionTitle({ icon, children }) {
+    return (
+        <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+                    {icon}
+                </span>
+                <h4 className="text-base font-bold tracking-tight text-zinc-900">
+                    {children}
+                </h4>
+            </div>
+            <div className="h-px flex-1 ml-3 bg-zinc-200/80" />
+        </div>
+    );
+}
+
 export default function Generator() {
     usePageTitle("Générateur");
 
     const [days, setDays] = useState(7);
 
-    // ✅ Multi-sélection catégories (plat par défaut)
     const [categories, setCategories] = useState(["plat"]);
-    // 🔒 Protection : retire automatiquement les catégories non pertinentes du générateur
-    useEffect(() => {
-        setCategories((prev) => {
-            const cleaned = prev.filter(
-                (c) => !GENERATOR_EXCLUDED_CATEGORIES.includes(c)
-            );
 
-            // Si tout a été retiré, on revient à "plat"
-            return cleaned.length > 0 ? cleaned : ["plat"];
-        });
-    }, []);
-
-
-    const [menus, setMenus] = useState([]); // [{ dayIndex, brunch?, lunch, dinner }]
+    const [menus, setMenus] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const d = useMemo(() => clampInt(days, 1, 14, 3), [days]);
+    useEffect(() => {
+        setCategories((prev) => prev.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
+    }, []);
 
-    const brunchEnabled = useMemo(() => categories.includes("brunch"), [categories]);
+    const d = useMemo(() => clampInt(days, 1, 14, 7), [days]);
 
-    // Catégories autorisées pour Midi/Soir (on enlève brunch)
-    const mealCategories = useMemo(() => {
-        const filtered = (Array.isArray(categories) ? categories : []).filter((c) => c !== "brunch");
-        // UX: si l’utilisateur n’a sélectionné que brunch (ou a tout décoché), on retombe sur plat pour Midi/Soir
-        return filtered.length > 0 ? filtered : ["plat"];
+    const hasBrunch = useMemo(() => categories.includes("brunch"), [categories]);
+
+    const selectedDailyCats = useMemo(() => {
+        return categories.filter((c) => c !== "brunch" && DAILY_CATEGORIES.has(c));
     }, [categories]);
 
-    // Compte total de recettes à générer
-    const mealsCount = useMemo(() => d * 2 + (brunchEnabled ? d : 0), [d, brunchEnabled]);
+    const safeDailyCats = useMemo(() => {
+        if (hasBrunch) {
+            return selectedDailyCats;
+        }
+        return selectedDailyCats.length > 0 ? selectedDailyCats : ["plat"];
+    }, [hasBrunch, selectedDailyCats]);
+
+    const orderedDailyCats = useMemo(() => {
+        const set = new Set(safeDailyCats);
+        const ordered = DAILY_ORDER.filter((c) => set.has(c));
+        const remaining = safeDailyCats.filter((c) => !DAILY_ORDER.includes(c));
+        return [...ordered, ...remaining];
+    }, [safeDailyCats]);
 
     const currentRecipeIds = useMemo(() => {
         const ids = [];
+
         for (const m of menus) {
             if (m?.brunch?._id) ids.push(m.brunch._id);
-            if (m?.lunch?._id) ids.push(m.lunch._id);
-            if (m?.dinner?._id) ids.push(m.dinner._id);
+
+            const lunchObj = m?.lunch || {};
+            const dinnerObj = m?.dinner || {};
+
+            for (const key of Object.keys(lunchObj)) {
+                if (lunchObj[key]?._id) ids.push(lunchObj[key]._id);
+            }
+            for (const key of Object.keys(dinnerObj)) {
+                if (dinnerObj[key]?._id) ids.push(dinnerObj[key]._id);
+            }
         }
+
         return ids;
     }, [menus]);
 
@@ -67,134 +97,129 @@ export default function Generator() {
             const has = prev.includes(c);
             const next = has ? prev.filter((x) => x !== c) : [...prev, c];
 
-            // Option UX: si tout est décoché, on revient à "plat"
             return next.length === 0 ? ["plat"] : next;
         });
     }, []);
 
-    // ✅ fetch avec catégories overridables (selon slot)
-    const fetchRandomRecipes = useCallback(
-        async ({ count, excludeIds = [], categoriesOverride = null }) => {
-            const params = new URLSearchParams();
-            params.set("count", String(count));
+    const fetchRandomRecipes = useCallback(async ({ count, excludeIds = [], category }) => {
+        const params = new URLSearchParams();
+        params.set("count", String(count));
 
-            const wantedCategories =
-                Array.isArray(categoriesOverride) && categoriesOverride.length > 0
-                    ? categoriesOverride
-                    : mealCategories;
+        params.set("category", String(category || "plat"));
 
-            params.set("category", wantedCategories.join(","));
+        if (excludeIds.length > 0) params.set("exclude", buildExcludeParam(excludeIds));
 
-            if (excludeIds.length > 0) params.set("exclude", buildExcludeParam(excludeIds));
+        const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
+        const res = await axios.get(url);
+        return Array.isArray(res.data) ? res.data : [];
+    }, []);
 
-            const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
-            const res = await axios.get(url);
-            return Array.isArray(res.data) ? res.data : [];
+    const buildEmptyMenuDay = useCallback(
+        (dayIndex) => {
+            const lunch = {};
+            const dinner = {};
+
+            for (const c of safeDailyCats) {
+                lunch[c] = null;
+                dinner[c] = null;
+            }
+
+            return {
+                dayIndex,
+                brunch: hasBrunch ? null : undefined,
+                lunch,
+                dinner,
+            };
         },
-        [mealCategories]
+        [hasBrunch, safeDailyCats]
     );
 
     const generateMenus = useCallback(async () => {
         setLoading(true);
         setError("");
+
         try {
-            let exclude = [];
-            let brunchPicked = [];
-            let mealsPicked = [];
+            const base = Array.from({ length: d }, (_, dayIndex) => buildEmptyMenuDay(dayIndex));
 
-            // 1) Si brunch activé : on récupère d recettes brunch (une par jour)
-            if (brunchEnabled) {
-                for (let round = 0; round < 5 && brunchPicked.length < d; round++) {
-                    const need = d - brunchPicked.length;
-                    const batch = await fetchRandomRecipes({
-                        count: need,
-                        excludeIds: exclude,
-                        categoriesOverride: ["brunch"],
-                    });
-                    if (batch.length === 0) break;
+            let exclude = [...currentRecipeIds];
 
-                    brunchPicked = [...brunchPicked, ...batch];
-                    exclude = [...exclude, ...batch.map((r) => r?._id).filter(Boolean)];
-                }
-
-                // fallback si pas assez (sans exclude)
-                while (brunchPicked.length < d) {
-                    const batch = await fetchRandomRecipes({
-                        count: d - brunchPicked.length,
-                        excludeIds: [],
-                        categoriesOverride: ["brunch"],
-                    });
-                    if (batch.length === 0) break;
-
-                    brunchPicked = [...brunchPicked, ...batch];
-                    exclude = [...exclude, ...batch.map((r) => r?._id).filter(Boolean)];
-                }
-            }
-
-            // 2) Puis Midi/Soir : d*2 recettes parmi mealCategories (sans brunch)
-            const wantedMeals = d * 2;
-
-            for (let round = 0; round < 5 && mealsPicked.length < wantedMeals; round++) {
-                const need = wantedMeals - mealsPicked.length;
-                const batch = await fetchRandomRecipes({
-                    count: need,
+            if (hasBrunch) {
+                const brunchBatch = await fetchRandomRecipes({
+                    count: d,
                     excludeIds: exclude,
-                    categoriesOverride: mealCategories,
+                    category: "brunch",
                 });
-                if (batch.length === 0) break;
 
-                mealsPicked = [...mealsPicked, ...batch];
-                exclude = [...exclude, ...batch.map((r) => r?._id).filter(Boolean)];
+                for (let i = 0; i < d; i++) {
+                    base[i].brunch = brunchBatch[i] ?? null;
+                }
+
+                exclude = [...exclude, ...brunchBatch.map((r) => r?._id).filter(Boolean)];
             }
 
-            while (mealsPicked.length < wantedMeals) {
-                const batch = await fetchRandomRecipes({
-                    count: wantedMeals - mealsPicked.length,
-                    excludeIds: [],
-                    categoriesOverride: mealCategories,
-                });
-                if (batch.length === 0) break;
+            for (const cat of safeDailyCats) {
+                const needed = d * 2;
 
-                mealsPicked = [...mealsPicked, ...batch];
-                exclude = [...exclude, ...batch.map((r) => r?._id).filter(Boolean)];
+                let picked = [];
+                let localExclude = [...exclude];
+
+                for (let round = 0; round < 5 && picked.length < needed; round++) {
+                    const batch = await fetchRandomRecipes({
+                        count: needed - picked.length,
+                        excludeIds: localExclude,
+                        category: cat,
+                    });
+                    if (batch.length === 0) break;
+                    picked = [...picked, ...batch];
+                    localExclude = [...localExclude, ...batch.map((r) => r?._id).filter(Boolean)];
+                }
+
+                while (picked.length < needed) {
+                    const batch = await fetchRandomRecipes({
+                        count: needed - picked.length,
+                        excludeIds: [],
+                        category: cat,
+                    });
+                    if (batch.length === 0) break;
+                    picked = [...picked, ...batch];
+                }
+
+                for (let i = 0; i < d; i++) {
+                    base[i].lunch[cat] = picked[i * 2] ?? null;
+                    base[i].dinner[cat] = picked[i * 2 + 1] ?? null;
+                }
+
+                exclude = [...exclude, ...picked.map((r) => r?._id).filter(Boolean)];
             }
 
-            // 3) Construire les menus
-            const newMenus = [];
-            for (let i = 0; i < d; i++) {
-                newMenus.push({
-                    dayIndex: i,
-                    brunch: brunchEnabled ? brunchPicked[i] ?? null : undefined,
-                    lunch: mealsPicked[i * 2] ?? null,
-                    dinner: mealsPicked[i * 2 + 1] ?? null,
-                });
-            }
-            setMenus(newMenus);
+            setMenus(base);
         } catch (e) {
             console.error(e);
             setError("Impossible de générer des menus pour le moment.");
         } finally {
             setLoading(false);
         }
-    }, [d, brunchEnabled, mealCategories, fetchRandomRecipes]);
+    }, [buildEmptyMenuDay, currentRecipeIds, d, fetchRandomRecipes, hasBrunch, safeDailyCats]);
 
     const regenerateOne = useCallback(
-        async ({ dayIndex, slot }) => {
+        async ({ dayIndex, meal, categoryKey }) => {
             setLoading(true);
             setError("");
-            try {
-                const exclude = currentRecipeIds.filter((id) => {
-                    const current = menus?.[dayIndex]?.[slot]?._id;
-                    return id && id !== current;
-                });
 
-                const slotCategories =
-                    slot === "brunch" ? ["brunch"] : mealCategories;
+            try {
+                const current =
+                    meal === "brunch"
+                        ? menus?.[dayIndex]?.brunch
+                        : menus?.[dayIndex]?.[meal]?.[categoryKey];
+
+                const currentId = current?._id;
+
+                const exclude = currentRecipeIds.filter((id) => id && id !== currentId);
 
                 const firstTry = await fetchRandomRecipes({
                     count: 1,
                     excludeIds: exclude,
-                    categoriesOverride: slotCategories,
+                    category: meal === "brunch" ? "brunch" : categoryKey,
                 });
 
                 const replacement =
@@ -202,14 +227,25 @@ export default function Generator() {
                     (await fetchRandomRecipes({
                         count: 1,
                         excludeIds: [],
-                        categoriesOverride: slotCategories,
+                        category: meal === "brunch" ? "brunch" : categoryKey,
                     }))?.[0] ??
                     null;
 
                 setMenus((prev) =>
                     prev.map((m) => {
                         if (m.dayIndex !== dayIndex) return m;
-                        return { ...m, [slot]: replacement };
+
+                        if (meal === "brunch") {
+                            return { ...m, brunch: replacement };
+                        }
+
+                        return {
+                            ...m,
+                            [meal]: {
+                                ...(m[meal] || {}),
+                                [categoryKey]: replacement,
+                            },
+                        };
                     })
                 );
             } catch (e) {
@@ -219,23 +255,27 @@ export default function Generator() {
                 setLoading(false);
             }
         },
-        [currentRecipeIds, fetchRandomRecipes, menus, mealCategories]
+        [currentRecipeIds, fetchRandomRecipes, menus]
     );
 
     useEffect(() => {
         generateMenus();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const badgeCategories = useMemo(
+        () => CATEGORY_ORDER.filter((c) => !HIDDEN_ON_GENERATOR.has(c)),
+        []
+    );
 
     return (
         <section className="container py-8">
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-            <span className="relative inline-block">
-              Mes recettes
-              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-            </span>
+                        <span className="relative inline-block">
+                            Mes recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Retrouve ici toutes les recettes que tu as partagées.
@@ -253,51 +293,40 @@ export default function Generator() {
                                     min={1}
                                     max={14}
                                     value={days}
-                                    onChange={(e) => setDays(clampInt(e.target.value, 1, 14, 3))}
+                                    onChange={(e) => setDays(clampInt(e.target.value, 1, 14, 7))}
                                 />
-                                <div className="text-xs text-zinc-500">{mealsCount} repas à générer</div>
+                                <div className="text-xs text-zinc-500">{d * 2} repas (midi+soir)</div>
                             </label>
 
-                            {/* ✅ badges multi-sélection */}
                             <div className="space-y-2 sm:col-span-1 lg:col-span-2">
                                 <div className="text-sm font-semibold text-zinc-700">Catégories</div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    {CATEGORY_ORDER
-                                        .filter((c) => !GENERATOR_EXCLUDED_CATEGORIES.includes(c))
-                                        .map((c) => {
-                                            const selected = categories.includes(c);
-                                            return (
-                                                <button
-                                                    key={c}
-                                                    type="button"
-                                                    onClick={() => toggleCategory(c)}
-                                                    className={[
-                                                        getBadgeClass(c),
-                                                        "transition",
-                                                        "ring-offset-2 ring-offset-white",
-                                                        selected
-                                                            ? "ring-2 ring-primary/40 opacity-100"
-                                                            : "opacity-50 hover:opacity-90",
-                                                    ].join(" ")}
-                                                    aria-pressed={selected}
-                                                    title={getCategoryLabel(c)}
-                                                >
-                                                    {getCategoryLabel(c)}
-                                                </button>
-                                            );
-                                        })}
+                                    {badgeCategories.map((c) => {
+                                        const selected = categories.includes(c);
+                                        return (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                onClick={() => toggleCategory(c)}
+                                                className={[
+                                                    getBadgeClass(c),
+                                                    "transition",
+                                                    "ring-offset-2 ring-offset-white",
+                                                    selected ? "ring-2 ring-primary/40 opacity-100" : "opacity-50 hover:opacity-90",
+                                                ].join(" ")}
+                                                aria-pressed={selected}
+                                                title={getCategoryLabel(c)}
+                                            >
+                                                {getCategoryLabel(c)}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="text-xs text-zinc-500">
                                     Par défaut : Plat — clique pour sélectionner une ou plusieurs catégories
                                 </div>
-
-                                {brunchEnabled && (
-                                    <div className="text-xs text-zinc-500">
-                                        ✅ Brunch activé : une recette “Brunch” sera ajoutée en plus chaque jour (catégorie brunch uniquement).
-                                    </div>
-                                )}
                             </div>
                         </div>
 
@@ -320,31 +349,52 @@ export default function Generator() {
                                 <h3 className="text-primary font-extrabold">Jour {menu.dayIndex + 1}</h3>
                             </div>
 
-                            {brunchEnabled && (
-                                <>
-                                    <GeneratorRecipeCard
-                                        embedded
-                                        label="Brunch"
-                                        recipe={menu.brunch}
-                                        onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, slot: "brunch" })}
-                                    />
-                                    <hr className="border-0 h-px bg-zinc-200 my-1" />
-                                </>
+                            {hasBrunch && (
+                                <div className="mb-4">
+                                    <SectionTitle icon="☕">Brunch</SectionTitle>
+                                    <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                        <GeneratorRecipeCard
+                                            embedded
+                                            recipe={menu.brunch}
+                                            onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, meal: "brunch" })}
+                                        />
+                                    </div>
+                                </div>
                             )}
 
-                            <GeneratorRecipeCard
-                                embedded
-                                label="Midi"
-                                recipe={menu.lunch}
-                                onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, slot: "lunch" })}
-                            />
-                            <hr className="border-0 h-px bg-zinc-200 my-1" />
-                            <GeneratorRecipeCard
-                                embedded
-                                label="Soir"
-                                recipe={menu.dinner}
-                                onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, slot: "dinner" })}
-                            />
+                            <div className="mb-4">
+                                <SectionTitle icon="🍽️">Midi</SectionTitle>
+                                <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                    {orderedDailyCats.map((cat) => (
+                                        <GeneratorRecipeCard
+                                            key={`lunch-${cat}`}
+                                            embedded
+                                            label={getCategoryLabel(cat)}
+                                            recipe={menu.lunch?.[cat] ?? null}
+                                            onRegenerate={() =>
+                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "lunch", categoryKey: cat })
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <SectionTitle icon="🌙">Soir</SectionTitle>
+                                <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                    {orderedDailyCats.map((cat) => (
+                                        <GeneratorRecipeCard
+                                            key={`dinner-${cat}`}
+                                            embedded
+                                            label={getCategoryLabel(cat)}
+                                            recipe={menu.dinner?.[cat] ?? null}
+                                            onRegenerate={() =>
+                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "dinner", categoryKey: cat })
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>

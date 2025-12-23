@@ -69,7 +69,7 @@ export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDe
 
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
-                                <span>🫙️</span>
+                                <span>🥕️</span>
                                 <span className="font-semibold text-primary">{ingredientsCount}</span>
                             </div>
                             <span className="text-xs text-zinc-400">{ingredientsLabel}</span>
@@ -77,7 +77,7 @@ export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDe
 
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
-                                <span>🍽</span>
+                                <span>👤</span>
                                 <span className="font-semibold text-primary">{servings}</span>
                             </div>
                             <span className="text-xs text-zinc-400">{servingsLabel}</span>
