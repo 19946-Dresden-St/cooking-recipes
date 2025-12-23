@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const User = require("../models/user");
 const { normalizeUsername } = require("../utils/username");
 const { signUpUser, loginUser } = require("../services/user.service");

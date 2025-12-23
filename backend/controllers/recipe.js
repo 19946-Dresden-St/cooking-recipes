@@ -1,19 +1,13 @@
 const mongoose = require("mongoose");
-const Recipes = require("../models/recipe");
-const fs = require("fs");
-const path = require("path");
 const { normalizeStringArray } = require("../utils/normalize");
-const { uploadRecipeImage } = require("../middlewares/uploadRecipeImage");
 const {
     getAllRecipes,
     getRecipeById,
+    getRandomRecipes: getRandomRecipesService,
     createRecipe,
-    updateRecipeById,
-    deleteRecipeById,
+    updateRecipeWithImage,
+    deleteRecipeWithImage,
 } = require("../services/recipe.service");
-
-
-const upload = uploadRecipeImage;
 
 /* ===== LISTE DES RECETTES ===== */
 const getRecipes = async (req, res) => {
@@ -28,60 +22,31 @@ const getRecipe = async (req, res) => {
 };
 
 const getRandomRecipes = async (req, res) => {
-    try {
-        const countRaw = req.query.count;
-        const countParsed = Number.parseInt(countRaw, 10);
-        const count =
-            Number.isFinite(countParsed) && countParsed > 0
-                ? Math.min(countParsed, 50)
-                : 1;
+    const countRaw = req.query.count;
+    const countParsed = Number.parseInt(countRaw, 10);
+    const count = Number.isFinite(countParsed) && countParsed > 0 ? Math.min(countParsed, 50) : 1;
 
-        const categoryRaw = (req.query.category || "plat").toString().trim();
-        const categories = categoryRaw
+    const categoryRaw = (req.query.category || "plat").toString().trim();
+    const categories = categoryRaw.split(",").map((s) => s.trim()).filter(Boolean);
+
+    const excludeRaw = (req.query.exclude || "").toString().trim();
+    const excludeIds = excludeRaw
+        ? excludeRaw
             .split(",")
             .map((s) => s.trim())
-            .filter(Boolean);
+            .filter(Boolean)
+            .map((id) => {
+                try {
+                    return new mongoose.Types.ObjectId(id);
+                } catch {
+                    return null;
+                }
+            })
+            .filter(Boolean)
+        : [];
 
-        const excludeRaw = (req.query.exclude || "").toString().trim();
-        const excludeIds = excludeRaw
-            ? excludeRaw
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
-                .map((id) => {
-                    try {
-                        return new mongoose.Types.ObjectId(id);
-                    } catch {
-                        return null;
-                    }
-                })
-                .filter(Boolean)
-            : [];
-
-        const match = {};
-
-        if (categories.length === 1) {
-            match.category = categories[0];
-        } else if (categories.length > 1) {
-            match.category = { $in: categories };
-        } else {
-            match.category = "plat";
-        }
-
-        if (excludeIds.length > 0) {
-            match._id = { $nin: excludeIds };
-        }
-
-        const randomRecipes = await Recipes.aggregate([
-            { $match: match },
-            { $sample: { size: count } },
-        ]);
-
-        return res.json(randomRecipes);
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Server error" });
-    }
+    const randomRecipes = await getRandomRecipesService({ count, categories, excludeIds });
+    return res.json(randomRecipes);
 };
 
 const addRecipe = async (req, res) => {
@@ -92,27 +57,20 @@ const addRecipe = async (req, res) => {
 
     if (!title || !time || cleanedIngredients.length === 0 || cleanedInstructions.length === 0) {
         return res.status(400).json({
-            message:
-                "Le nom, le temps, les ingrédients et les instructions sont requis.",
+            message: "Le nom, le temps, les ingrédients et les instructions sont requis.",
         });
     }
 
     const parsedTime = Number(time);
     if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
-        return res.status(400).json({
-            message: "Le temps doit être un entier positif.",
-        });
+        return res.status(400).json({ message: "Le temps doit être un entier positif." });
     }
 
     const parsedServings =
-        servings === undefined || servings === null || servings === ""
-            ? 4
-            : Number(servings);
+        servings === undefined || servings === null || servings === "" ? 4 : Number(servings);
 
     if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
-        return res.status(400).json({
-            message: "Le nombre de personnes doit être un entier positif.",
-        });
+        return res.status(400).json({ message: "Le nombre de personnes doit être un entier positif." });
     }
 
     const coverImage = req.file ? req.file.filename : "heroSection.jpg";
@@ -132,107 +90,49 @@ const addRecipe = async (req, res) => {
 };
 
 const editRecipe = async (req, res) => {
-    try {
-        const recipe = await Recipes.findById(req.params.id);
-        if (!recipe) {
-            return res.status(404).json({ message: "Recipe not found" });
+    const updateData = { ...req.body };
+
+    if (updateData.ingredients !== undefined) {
+        updateData.ingredients = normalizeStringArray(updateData.ingredients);
+        if (updateData.ingredients.length === 0) {
+            return res.status(400).json({ message: "Ajoute au moins un ingrédient." });
         }
-
-        let coverImage = recipe.coverImage;
-
-        if (req.file) {
-            if (recipe.coverImage && recipe.coverImage !== "heroSection.jpg") {
-                const oldImagePath = path.join(
-                    __dirname,
-                    "..",
-                    "public",
-                    "images",
-                    recipe.coverImage
-                );
-
-                fs.unlink(oldImagePath, (err) => {
-                    if (err) {
-                        console.warn("Old image deletion failed:", err.message);
-                    }
-                });
-            }
-
-            coverImage = req.file.filename;
-        }
-
-        const updateData = { ...req.body, coverImage };
-
-        if (updateData.ingredients !== undefined) {
-            updateData.ingredients = normalizeStringArray(updateData.ingredients);
-            if (updateData.ingredients.length === 0) {
-                return res.status(400).json({
-                    message: "Ajoute au moins un ingrédient.",
-                });
-            }
-        }
-
-        if (updateData.instructions !== undefined) {
-            updateData.instructions = normalizeStringArray(updateData.instructions);
-            if (updateData.instructions.length === 0) {
-                return res.status(400).json({
-                    message: "Ajoute au moins une instruction.",
-                });
-            }
-        }
-
-        if (updateData.time !== undefined) {
-            const parsedTime = Number(updateData.time);
-            if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
-                return res.status(400).json({
-                    message: "Le temps doit être un entier positif.",
-                });
-            }
-            updateData.time = parsedTime;
-        }
-
-        if (updateData.servings !== undefined) {
-            const parsedServings = Number(updateData.servings);
-            if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
-                return res.status(400).json({
-                    message: "Le nombre de personnes doit être un entier positif.",
-                });
-            }
-            updateData.servings = parsedServings;
-        }
-
-        const updatedRecipe = await Recipes.findByIdAndUpdate(
-            req.params.id,
-            updateData,
-            { new: true, runValidators: true }
-        );
-
-        return res.json(updatedRecipe);
-    } catch (err) {
-        console.error(err);
-        return res.status(400).json({ message: "Error updating recipe" });
     }
+
+    if (updateData.instructions !== undefined) {
+        updateData.instructions = normalizeStringArray(updateData.instructions);
+        if (updateData.instructions.length === 0) {
+            return res.status(400).json({ message: "Ajoute au moins une instruction." });
+        }
+    }
+
+    if (updateData.time !== undefined) {
+        const parsedTime = Number(updateData.time);
+        if (!Number.isInteger(parsedTime) || parsedTime <= 0) {
+            return res.status(400).json({ message: "Le temps doit être un entier positif." });
+        }
+        updateData.time = parsedTime;
+    }
+
+    if (updateData.servings !== undefined) {
+        const parsedServings = Number(updateData.servings);
+        if (!Number.isInteger(parsedServings) || parsedServings <= 0) {
+            return res.status(400).json({ message: "Le nombre de personnes doit être un entier positif." });
+        }
+        updateData.servings = parsedServings;
+    }
+
+    const updatedRecipe = await updateRecipeWithImage({
+        id: req.params.id,
+        updateData,
+        newFilename: req.file?.filename,
+    });
+
+    return res.json(updatedRecipe);
 };
 
 const deleteRecipe = async (req, res) => {
-    const recipe = await getRecipeById(req.params.id);
-
-    if (!recipe) {
-        return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    if (recipe.coverImage && recipe.coverImage !== "heroSection.jpg") {
-        const imagePath = path.join(
-            __dirname,
-            "..",
-            "public",
-            "images",
-            recipe.coverImage
-        );
-
-        fs.unlink(imagePath, () => {});
-    }
-
-    await deleteRecipeById(req.params.id);
+    await deleteRecipeWithImage(req.params.id);
     return res.json({ status: "Recipe deleted successfully" });
 };
 
@@ -243,5 +143,4 @@ module.exports = {
     addRecipe,
     editRecipe,
     deleteRecipe,
-    upload,
 };
