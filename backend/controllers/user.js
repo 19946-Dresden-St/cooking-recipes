@@ -1,6 +1,11 @@
-const User = require("../models/user");
 const { normalizeUsername } = require("../utils/username");
-const { signUpUser, loginUser } = require("../services/user.service");
+const {
+    signUpUser,
+    loginUser,
+    isUsernameTaken,
+    findUserByUsername,
+    getPublicUserById,
+} = require("../services/user.service");
 
 /* ===== SIGN UP ===== */
 const userSignUp = async (req, res) => {
@@ -20,12 +25,8 @@ const userSignUp = async (req, res) => {
         });
     }
 
-    const existingUser = await User.findOne({ username: normalized }).collation({
-        locale: "en",
-        strength: 2,
-    });
-
-    if (existingUser) {
+    const taken = await isUsernameTaken(normalized);
+    if (taken) {
         return res.status(400).json({
             error: "Username already exists",
         });
@@ -51,9 +52,7 @@ const userLogin = async (req, res) => {
 
     const normalized = normalizeUsername(username);
 
-    const user = await User.findOne({ username: normalized })
-        .collation({ locale: "en", strength: 2 })
-        .select("+password");
+    const user = await findUserByUsername(normalized, { withPassword: true });
 
     if (!user) {
         return res.status(400).json({
@@ -74,13 +73,13 @@ const userLogin = async (req, res) => {
 
 /* ===== GET USER ===== */
 const getUser = async (req, res) => {
-    const user = await User.findById(req.params.id);
+    const user = await getPublicUserById(req.params.id);
 
     if (!user) {
         return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({
+    return res.json({
         _id: user._id,
         username: user.username,
     });
