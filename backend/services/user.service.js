@@ -1,8 +1,15 @@
 const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { normalizeUsername } = require("../utils/username");
 
 const USERNAME_COLLATION = { locale: "en", strength: 2 };
+
+function httpError(statusCode, message) {
+    const err = new Error(message);
+    err.statusCode = statusCode;
+    return err;
+}
 
 /**
  * Trouve un user par username (case-insensitive via collation)
@@ -30,7 +37,7 @@ const getPublicUserById = async (id) => {
     return User.findById(id).select("_id username");
 };
 
-/* ===== SIGN UP ===== */
+/* ===== SIGN UP (bas niveau) ===== */
 const signUpUser = async ({ username, password }) => {
     const hashPwd = await bcrypt.hash(password, 10);
 
@@ -60,7 +67,7 @@ const signUpUser = async ({ username, password }) => {
     };
 };
 
-/* ===== LOGIN ===== */
+/* ===== LOGIN (bas niveau) ===== */
 const loginUser = async ({ user, password }) => {
     const isValid = await bcrypt.compare(password, user.password);
 
@@ -88,13 +95,57 @@ const loginUser = async ({ user, password }) => {
     };
 };
 
+/* ===== FLOWS "haut niveau" (validation + orchestration) ===== */
+const registerUser = async ({ username, password }) => {
+    if (!username || !password) {
+        throw httpError(400, "Username or password cannot be empty");
+    }
+
+    const normalized = normalizeUsername(username);
+
+    if (normalized.length < 3) {
+        throw httpError(400, "Username must be at least 3 characters");
+    }
+
+    const taken = await isUsernameTaken(normalized);
+    if (taken) {
+        throw httpError(400, "Username already exists");
+    }
+
+    return signUpUser({ username: normalized, password });
+};
+
+const authenticateUser = async ({ username, password }) => {
+    if (!username || !password) {
+        throw httpError(400, "Username or password cannot be empty");
+    }
+
+    const normalized = normalizeUsername(username);
+
+    const user = await findUserByUsername(normalized, { withPassword: true });
+    if (!user) {
+        throw httpError(400, "Invalid username or password");
+    }
+
+    const result = await loginUser({ user, password });
+    if (!result) {
+        throw httpError(400, "Invalid username or password");
+    }
+
+    return result;
+};
+
 module.exports = {
     // queries / helpers
     findUserByUsername,
     isUsernameTaken,
     getPublicUserById,
 
-    // existing auth flows
+    // low-level auth
     signUpUser,
     loginUser,
+
+    // high-level flows (controllers should call these)
+    registerUser,
+    authenticateUser,
 };
