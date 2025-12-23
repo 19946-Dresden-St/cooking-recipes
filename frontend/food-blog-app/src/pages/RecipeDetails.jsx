@@ -63,7 +63,7 @@ export default function RecipeDetails() {
 
                 <div className="mt-8 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
                     <img
-                        src={`${API_BASE_URL}/images/${recipe?.coverImage}`}
+                        src={recipe?.coverImage?.startsWith("http") ? recipe.coverImage : `${API_BASE_URL}/images/${recipe?.coverImage}`}
                         alt={recipe?.title ?? "Recipe"}
                         className="h-64 w-full object-cover md:h-80"
                         loading="lazy"

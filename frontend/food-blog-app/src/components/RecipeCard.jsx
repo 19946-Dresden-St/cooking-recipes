@@ -26,7 +26,7 @@ export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDe
         >
             <div className="relative">
                 <img
-                    src={`${API_BASE_URL}/images/${item.coverImage}`}
+                    src={item.coverImage?.startsWith("http") ? item.coverImage : `${API_BASE_URL}/images/${item.coverImage}`}
                     alt={item.title}
                     onError={(e) => {
                         e.currentTarget.src = placeholderImg;

@@ -36,6 +36,10 @@ const recipeSchema = new mongoose.Schema(
             type: String,
             default: "heroSection.jpg",
         },
+        coverImagePublicId: {
+            type: String,
+            default: null,
+        },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

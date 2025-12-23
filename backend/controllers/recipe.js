@@ -72,7 +72,8 @@ const addRecipe = async (req, res) => {
         throw httpError(400, "Le nombre de personnes doit être un entier positif.");
     }
 
-    const coverImage = req.file ? req.file.filename : "heroSection.jpg";
+    const coverImage = req.file ? req.file.path : "heroSection.jpg";
+    const coverImagePublicId = req.file ? req.file.filename : null;
 
     const newRecipe = await createRecipe({
         title,
@@ -82,6 +83,7 @@ const addRecipe = async (req, res) => {
         servings: parsedServings,
         category: category || "plat",
         coverImage,
+        coverImagePublicId,
         createdBy: req.user.id,
     });
 
@@ -124,7 +126,8 @@ const editRecipe = async (req, res) => {
     const updatedRecipe = await updateRecipeWithImage({
         id: req.params.id,
         updateData,
-        newFilename: req.file?.filename,
+        newImageUrl: req.file?.path,
+        newImagePublicId: req.file?.filename,
     });
 
     return res.json(updatedRecipe);
