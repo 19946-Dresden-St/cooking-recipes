@@ -1,6 +1,9 @@
 backend/node_modules/
 backend/.env
 backend/package-lock.json
+backend/scripts/
+
+frontend/food-blog-app/package-lock.json
 
 .DS_Store
 
