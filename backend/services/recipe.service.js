@@ -1,7 +1,7 @@
-const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 const Recipes = require("../models/recipe");
+const httpError = require("../utils/httpError");
 
 const DEFAULT_IMAGE = "heroSection.jpg";
 
@@ -42,9 +42,7 @@ const createRecipe = async (data) => Recipes.create(data);
 const updateRecipeWithImage = async ({ id, updateData, newFilename }) => {
     const recipe = await Recipes.findById(id);
     if (!recipe) {
-        const err = new Error("Recipe not found");
-        err.statusCode = 404;
-        throw err;
+        throw httpError(404, "Recipe not found");
     }
 
     let coverImage = recipe.coverImage;
@@ -64,9 +62,7 @@ const updateRecipeWithImage = async ({ id, updateData, newFilename }) => {
 const deleteRecipeWithImage = async (id) => {
     const recipe = await Recipes.findById(id);
     if (!recipe) {
-        const err = new Error("Recipe not found");
-        err.statusCode = 404;
-        throw err;
+        throw httpError(404, "Recipe not found");
     }
 
     deleteRecipeImageIfNeeded(recipe.coverImage);

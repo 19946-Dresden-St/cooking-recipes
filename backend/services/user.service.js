@@ -2,14 +2,9 @@ const User = require("../models/user");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { normalizeUsername } = require("../utils/username");
+const httpError = require("../utils/httpError");
 
 const USERNAME_COLLATION = { locale: "en", strength: 2 };
-
-function httpError(statusCode, message) {
-    const err = new Error(message);
-    err.statusCode = statusCode;
-    return err;
-}
 
 /**
  * Trouve un user par username (case-insensitive via collation)
