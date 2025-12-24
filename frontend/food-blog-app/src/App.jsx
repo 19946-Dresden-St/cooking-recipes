@@ -10,7 +10,7 @@ import RecipeDetails from "./pages/RecipeDetails.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
 import FavRecipes from "./pages/FavRecipes.jsx";
 import Generator from "./pages/Generator.jsx";
-
+import ShoppingList from "./pages/ShoppingList.jsx";
 
 const getAllRecipes = async () => {
     let allRecipes = []
@@ -52,7 +52,8 @@ const router = createBrowserRouter([
             { path: "/favRecipe", element: <FavRecipes />, loader: getFavRecipes },
             { path: "/addRecipe", element: <AddFoodRecipe /> },
             { path: "/editRecipe/:id", element: <EditRecipe /> },
-            { path:"/recipe/:id", element:<RecipeDetails/>, loader:getRecipe }
+            { path:"/recipe/:id", element:<RecipeDetails/>, loader:getRecipe },
+            { path: "/shopping-list", element: <ShoppingList /> },
         ]}
 ]);
 

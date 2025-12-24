@@ -1,9 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../apiBase";
-import { CATEGORY_ORDER, getBadgeClass, getCategoryLabel } from "../utils/categories";
+import {
+    CATEGORY_ORDER,
+    getBadgeClass,
+    getCategoryLabel,
+} from "../utils/categories";
 import GeneratorRecipeCard from "../components/GeneratorRecipeCard";
 import usePageTitle from "../hooks/usePageTitle";
+import { useNavigate } from "react-router-dom";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -14,18 +19,27 @@ const clampInt = (value, min, max, fallback) => {
 const buildExcludeParam = (ids) => ids.filter(Boolean).join(",");
 
 const HIDDEN_ON_GENERATOR = new Set(["boisson", "sauce"]);
-
 const DAILY_CATEGORIES = new Set(["apero", "entree", "plat", "dessert"]);
-
 const DAILY_ORDER = ["apero", "entree", "plat", "dessert"];
+
+// --- Persistance (reste en mémoire entre pages) ---
+const STORAGE_KEY = "generator:menus:v1";
+
+const safeJsonParse = (value) => {
+    try {
+        return JSON.parse(value);
+    } catch {
+        return null;
+    }
+};
 
 function SectionTitle({ icon, children }) {
     return (
         <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
-                    {icon}
-                </span>
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+          {icon}
+        </span>
                 <h4 className="text-base font-bold tracking-tight text-zinc-900">
                     {children}
                 </h4>
@@ -39,13 +53,15 @@ export default function Generator() {
     usePageTitle("Générateur");
 
     const [days, setDays] = useState(7);
-
     const [categories, setCategories] = useState(["plat"]);
 
     const [menus, setMenus] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    const navigate = useNavigate();
+
+    // Retire les catégories non dispo sur le générateur
     useEffect(() => {
         setCategories((prev) => prev.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
     }, []);
@@ -59,9 +75,7 @@ export default function Generator() {
     }, [categories]);
 
     const safeDailyCats = useMemo(() => {
-        if (hasBrunch) {
-            return selectedDailyCats;
-        }
+        if (hasBrunch) return selectedDailyCats;
         return selectedDailyCats.length > 0 ? selectedDailyCats : ["plat"];
     }, [hasBrunch, selectedDailyCats]);
 
@@ -96,7 +110,6 @@ export default function Generator() {
         setCategories((prev) => {
             const has = prev.includes(c);
             const next = has ? prev.filter((x) => x !== c) : [...prev, c];
-
             return next.length === 0 ? ["plat"] : next;
         });
     }, []);
@@ -104,9 +117,7 @@ export default function Generator() {
     const fetchRandomRecipes = useCallback(async ({ count, excludeIds = [], category }) => {
         const params = new URLSearchParams();
         params.set("count", String(count));
-
         params.set("category", String(category || "plat"));
-
         if (excludeIds.length > 0) params.set("exclude", buildExcludeParam(excludeIds));
 
         const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
@@ -132,6 +143,20 @@ export default function Generator() {
             };
         },
         [hasBrunch, safeDailyCats]
+    );
+
+    const persistState = useCallback(
+        (nextMenus, nextDays = days, nextCategories = categories) => {
+            const payload = {
+                version: 1,
+                savedAt: Date.now(),
+                days: nextDays,
+                categories: nextCategories,
+                menus: nextMenus,
+            };
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        },
+        [days, categories]
     );
 
     const generateMenus = useCallback(async () => {
@@ -193,13 +218,23 @@ export default function Generator() {
             }
 
             setMenus(base);
+            persistState(base, d, categories);
         } catch (e) {
             console.error(e);
             setError("Impossible de générer des menus pour le moment.");
         } finally {
             setLoading(false);
         }
-    }, [buildEmptyMenuDay, currentRecipeIds, d, fetchRandomRecipes, hasBrunch, safeDailyCats]);
+    }, [
+        buildEmptyMenuDay,
+        categories,
+        currentRecipeIds,
+        d,
+        fetchRandomRecipes,
+        hasBrunch,
+        persistState,
+        safeDailyCats,
+    ]);
 
     const regenerateOne = useCallback(
         async ({ dayIndex, meal, categoryKey }) => {
@@ -213,7 +248,6 @@ export default function Generator() {
                         : menus?.[dayIndex]?.[meal]?.[categoryKey];
 
                 const currentId = current?._id;
-
                 const exclude = currentRecipeIds.filter((id) => id && id !== currentId);
 
                 const firstTry = await fetchRandomRecipes({
@@ -231,8 +265,8 @@ export default function Generator() {
                     }))?.[0] ??
                     null;
 
-                setMenus((prev) =>
-                    prev.map((m) => {
+                setMenus((prev) => {
+                    const next = prev.map((m) => {
                         if (m.dayIndex !== dayIndex) return m;
 
                         if (meal === "brunch") {
@@ -246,8 +280,12 @@ export default function Generator() {
                                 [categoryKey]: replacement,
                             },
                         };
-                    })
-                );
+                    });
+
+                    // persiste immédiatement la nouvelle version
+                    persistState(next, d, categories);
+                    return next;
+                });
             } catch (e) {
                 console.error(e);
                 setError("Impossible de regénérer cette recette.");
@@ -255,12 +293,33 @@ export default function Generator() {
                 setLoading(false);
             }
         },
-        [currentRecipeIds, fetchRandomRecipes, menus]
+        [categories, currentRecipeIds, d, fetchRandomRecipes, menus, persistState]
     );
 
+    // Au montage: restore si possible, sinon génération auto
     useEffect(() => {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        const parsed = raw ? safeJsonParse(raw) : null;
+
+        if (parsed?.version === 1 && Array.isArray(parsed.menus) && parsed.menus.length > 0) {
+            if (Number.isFinite(parsed.days)) setDays(clampInt(parsed.days, 1, 14, 7));
+            if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+                setCategories(parsed.categories.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
+            }
+            setMenus(parsed.menus);
+            return;
+        }
+
         generateMenus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Persiste aussi si days/categories changent (au moins pour garder les prefs)
+    useEffect(() => {
+        if (menus?.length > 0) {
+            persistState(menus, d, categories);
+        }
+    }, [categories, d, menus, persistState]);
 
     const badgeCategories = useMemo(
         () => CATEGORY_ORDER.filter((c) => !HIDDEN_ON_GENERATOR.has(c)),
@@ -272,10 +331,10 @@ export default function Generator() {
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-                        <span className="relative inline-block">
-                            Mes recettes
-                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                        </span>
+            <span className="relative inline-block">
+              Mes recettes
+              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+            </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Retrouve ici toutes les recettes que tu as partagées.
@@ -313,7 +372,9 @@ export default function Generator() {
                                                     getBadgeClass(c),
                                                     "transition",
                                                     "ring-offset-2 ring-offset-white",
-                                                    selected ? "ring-2 ring-primary/40 opacity-100" : "opacity-50 hover:opacity-90",
+                                                    selected
+                                                        ? "ring-2 ring-primary/40 opacity-100"
+                                                        : "opacity-50 hover:opacity-90",
                                                 ].join(" ")}
                                                 aria-pressed={selected}
                                                 title={getCategoryLabel(c)}
@@ -337,6 +398,14 @@ export default function Generator() {
                         >
                             {loading ? "Génération..." : "Générer"}
                         </button>
+
+                        <button
+                            className="btn-secondary-sm whitespace-nowrap w-full md:w-auto"
+                            onClick={() => navigate("/shopping-list", { state: { menus } })}
+                            disabled={loading || !menus?.length}
+                        >
+                            Liste de course
+                        </button>
                     </div>
 
                     {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -344,7 +413,10 @@ export default function Generator() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {menus.map((menu) => (
-                        <div key={menu.dayIndex} className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
+                        <div
+                            key={menu.dayIndex}
+                            className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4"
+                        >
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-primary font-extrabold">Jour {menu.dayIndex + 1}</h3>
                             </div>
@@ -356,7 +428,9 @@ export default function Generator() {
                                         <GeneratorRecipeCard
                                             embedded
                                             recipe={menu.brunch}
-                                            onRegenerate={() => regenerateOne({ dayIndex: menu.dayIndex, meal: "brunch" })}
+                                            onRegenerate={() =>
+                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "brunch" })
+                                            }
                                         />
                                     </div>
                                 </div>
@@ -372,7 +446,11 @@ export default function Generator() {
                                             label={getCategoryLabel(cat)}
                                             recipe={menu.lunch?.[cat] ?? null}
                                             onRegenerate={() =>
-                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "lunch", categoryKey: cat })
+                                                regenerateOne({
+                                                    dayIndex: menu.dayIndex,
+                                                    meal: "lunch",
+                                                    categoryKey: cat,
+                                                })
                                             }
                                         />
                                     ))}
@@ -389,7 +467,11 @@ export default function Generator() {
                                             label={getCategoryLabel(cat)}
                                             recipe={menu.dinner?.[cat] ?? null}
                                             onRegenerate={() =>
-                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "dinner", categoryKey: cat })
+                                                regenerateOne({
+                                                    dayIndex: menu.dayIndex,
+                                                    meal: "dinner",
+                                                    categoryKey: cat,
+                                                })
                                             }
                                         />
                                     ))}
