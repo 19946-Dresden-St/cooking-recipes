@@ -9,6 +9,7 @@ import {
 import GeneratorRecipeCard from "../components/GeneratorRecipeCard";
 import usePageTitle from "../hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
+import { FiUnlock } from "react-icons/fi";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -19,19 +20,9 @@ const clampInt = (value, min, max, fallback) => {
 const buildExcludeParam = (ids) => ids.filter(Boolean).join(",");
 
 const HIDDEN_ON_GENERATOR = new Set(["boisson", "sauce"]);
+
 const DAILY_CATEGORIES = new Set(["apero", "entree", "plat", "dessert"]);
 const DAILY_ORDER = ["apero", "entree", "plat", "dessert"];
-
-// --- Persistance (reste en mémoire entre pages) ---
-const STORAGE_KEY = "generator:menus:v1";
-
-const safeJsonParse = (value) => {
-    try {
-        return JSON.parse(value);
-    } catch {
-        return null;
-    }
-};
 
 function SectionTitle({ icon, children }) {
     return (
@@ -49,8 +40,30 @@ function SectionTitle({ icon, children }) {
     );
 }
 
+/** ---------- LocalStorage keys ---------- */
+const LS_MENUS = "generator:menus:v1";
+const LS_LOCKED_SLOTS = "generator:lockedSlots:v1";
+const LS_LOCKED_DAYS = "generator:lockedDays:v1";
+const LS_DAYS = "generator:days:v1";
+const LS_CATEGORIES = "generator:categories:v1";
+
+/** slot key: dayIndex|meal|categoryKey */
+const slotKey = ({ dayIndex, meal, categoryKey }) =>
+    `${dayIndex}|${meal}|${categoryKey ?? ""}`;
+
+const parseSlotKey = (key) => {
+    const [d, meal, categoryKey] = String(key).split("|");
+    return {
+        dayIndex: Number.parseInt(d, 10),
+        meal,
+        categoryKey: categoryKey || undefined,
+    };
+};
+
 export default function Generator() {
     usePageTitle("Générateur");
+
+    const navigate = useNavigate();
 
     const [days, setDays] = useState(7);
     const [categories, setCategories] = useState(["plat"]);
@@ -59,9 +72,87 @@ export default function Generator() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const navigate = useNavigate();
+    // 🔒 verrous : slots + jours
+    const [lockedSlots, setLockedSlots] = useState(() => ({})); // { [slotKey]: true }
+    const [lockedDays, setLockedDays] = useState(() => ({})); // { [dayIndex]: true }
 
-    // Retire les catégories non dispo sur le générateur
+    /** ---------- Restore from localStorage on mount ---------- */
+    useEffect(() => {
+        try {
+            const savedDays = localStorage.getItem(LS_DAYS);
+            const savedCats = localStorage.getItem(LS_CATEGORIES);
+            const savedMenus = localStorage.getItem(LS_MENUS);
+            const savedLockedSlots = localStorage.getItem(LS_LOCKED_SLOTS);
+            const savedLockedDays = localStorage.getItem(LS_LOCKED_DAYS);
+
+            if (savedDays) setDays(clampInt(savedDays, 1, 14, 7));
+
+            if (savedCats) {
+                const parsed = JSON.parse(savedCats);
+                if (Array.isArray(parsed) && parsed.length > 0) setCategories(parsed);
+            }
+
+            if (savedMenus) {
+                const parsed = JSON.parse(savedMenus);
+                if (Array.isArray(parsed)) setMenus(parsed);
+            }
+
+            if (savedLockedSlots) {
+                const parsed = JSON.parse(savedLockedSlots);
+                if (parsed && typeof parsed === "object") setLockedSlots(parsed);
+            }
+
+            if (savedLockedDays) {
+                const parsed = JSON.parse(savedLockedDays);
+                if (parsed && typeof parsed === "object") setLockedDays(parsed);
+            }
+        } catch {
+            // ignore
+        }
+    }, []);
+
+    /** ---------- Persist to localStorage ---------- */
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_DAYS, String(days));
+        } catch {
+            // ignore
+        }
+    }, [days]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_CATEGORIES, JSON.stringify(categories));
+        } catch {
+            // ignore
+        }
+    }, [categories]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_MENUS, JSON.stringify(menus));
+        } catch {
+            // ignore
+        }
+    }, [menus]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_LOCKED_SLOTS, JSON.stringify(lockedSlots));
+        } catch {
+            // ignore
+        }
+    }, [lockedSlots]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(LS_LOCKED_DAYS, JSON.stringify(lockedDays));
+        } catch {
+            // ignore
+        }
+    }, [lockedDays]);
+
+    /** ---------- Cleanup hidden categories once ---------- */
     useEffect(() => {
         setCategories((prev) => prev.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
     }, []);
@@ -86,6 +177,94 @@ export default function Generator() {
         return [...ordered, ...remaining];
     }, [safeDailyCats]);
 
+    /** ---------- Helpers: get/set recipe at slot ---------- */
+    const getRecipeAt = useCallback(
+        ({ dayIndex, meal, categoryKey }) => {
+            const m = menus?.[dayIndex];
+            if (!m) return null;
+            if (meal === "brunch") return m?.brunch ?? null;
+            return m?.[meal]?.[categoryKey] ?? null;
+        },
+        [menus]
+    );
+
+    const setRecipeAt = useCallback(({ dayIndex, meal, categoryKey, recipe }) => {
+        setMenus((prev) => {
+            const next = Array.isArray(prev) ? [...prev] : [];
+            const baseDay = next[dayIndex] ?? null;
+            if (!baseDay) return prev;
+
+            const updated = { ...baseDay };
+
+            if (meal === "brunch") {
+                updated.brunch = recipe;
+            } else {
+                updated[meal] = { ...(updated[meal] || {}) };
+                updated[meal][categoryKey] = recipe;
+            }
+
+            next[dayIndex] = updated;
+            return next;
+        });
+    }, []);
+
+    /** ---------- Locks ---------- */
+    const isDayLocked = useCallback(
+        (dayIndex) => !!lockedDays?.[dayIndex],
+        [lockedDays]
+    );
+
+    const isSlotLocked = useCallback(
+        ({ dayIndex, meal, categoryKey }) => {
+            if (isDayLocked(dayIndex)) return true;
+            return !!lockedSlots?.[slotKey({ dayIndex, meal, categoryKey })];
+        },
+        [lockedSlots, isDayLocked]
+    );
+
+    const toggleSlotLock = useCallback(({ dayIndex, meal, categoryKey }) => {
+        const key = slotKey({ dayIndex, meal, categoryKey });
+        setLockedSlots((prev) => {
+            const next = { ...(prev || {}) };
+            if (next[key]) delete next[key];
+            else next[key] = true;
+            return next;
+        });
+    }, []);
+
+    const toggleDayLock = useCallback((dayIndex) => {
+        setLockedDays((prev) => {
+            const next = { ...(prev || {}) };
+            if (next[dayIndex]) delete next[dayIndex];
+            else next[dayIndex] = true;
+            return next;
+        });
+    }, []);
+
+    const unlockAll = useCallback(() => {
+        setLockedSlots({});
+        setLockedDays({});
+    }, []);
+
+    const unlockDay = useCallback((dayIndex) => {
+        setLockedDays((prev) => {
+            const next = { ...(prev || {}) };
+            if (next[dayIndex]) delete next[dayIndex];
+            return next;
+        });
+
+        // Optionnel : on enlève aussi les locks de slots sur ce jour
+        setLockedSlots((prev) => {
+            const next = { ...(prev || {}) };
+            for (const k of Object.keys(next)) {
+                const parsed = parseSlotKey(k);
+                if (parsed.dayIndex === dayIndex) delete next[k];
+            }
+            return next;
+        });
+    }, []);
+
+    /** ---------- Current ids (for avoiding duplicates) ---------- */
     const currentRecipeIds = useMemo(() => {
         const ids = [];
 
@@ -114,16 +293,20 @@ export default function Generator() {
         });
     }, []);
 
-    const fetchRandomRecipes = useCallback(async ({ count, excludeIds = [], category }) => {
-        const params = new URLSearchParams();
-        params.set("count", String(count));
-        params.set("category", String(category || "plat"));
-        if (excludeIds.length > 0) params.set("exclude", buildExcludeParam(excludeIds));
+    const fetchRandomRecipes = useCallback(
+        async ({ count, excludeIds = [], category }) => {
+            const params = new URLSearchParams();
+            params.set("count", String(count));
+            params.set("category", String(category || "plat"));
+            if (excludeIds.length > 0)
+                params.set("exclude", buildExcludeParam(excludeIds));
 
-        const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
-        const res = await axios.get(url);
-        return Array.isArray(res.data) ? res.data : [];
-    }, []);
+            const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
+            const res = await axios.get(url);
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        []
+    );
 
     const buildEmptyMenuDay = useCallback(
         (dayIndex) => {
@@ -145,63 +328,141 @@ export default function Generator() {
         [hasBrunch, safeDailyCats]
     );
 
-    const persistState = useCallback(
-        (nextMenus, nextDays = days, nextCategories = categories) => {
-            const payload = {
-                version: 1,
-                savedAt: Date.now(),
-                days: nextDays,
-                categories: nextCategories,
-                menus: nextMenus,
-            };
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-        },
-        [days, categories]
-    );
-
+    /**
+     * Génération “intelligente” :
+     * - garde ce qui est verrouillé (slot ou journée)
+     * - remplit uniquement ce qui est déverrouillé
+     */
     const generateMenus = useCallback(async () => {
         setLoading(true);
         setError("");
 
         try {
-            const base = Array.from({ length: d }, (_, dayIndex) => buildEmptyMenuDay(dayIndex));
+            // base = length d
+            const base = Array.from({ length: d }, (_, dayIndex) => {
+                const empty = buildEmptyMenuDay(dayIndex);
+                const existing = menus?.[dayIndex];
 
-            let exclude = [...currentRecipeIds];
+                // si pas d'existant, on part de empty
+                if (!existing) return empty;
 
-            if (hasBrunch) {
-                const brunchBatch = await fetchRandomRecipes({
-                    count: d,
-                    excludeIds: exclude,
-                    category: "brunch",
-                });
+                // sinon, on reconstruit en gardant ce qui est verrouillé
+                const rebuilt = buildEmptyMenuDay(dayIndex);
 
-                for (let i = 0; i < d; i++) {
-                    base[i].brunch = brunchBatch[i] ?? null;
+                if (hasBrunch) {
+                    const brunchLocked = isSlotLocked({
+                        dayIndex,
+                        meal: "brunch",
+                        categoryKey: "brunch",
+                    });
+                    rebuilt.brunch = brunchLocked ? existing?.brunch ?? null : null;
                 }
 
-                exclude = [...exclude, ...brunchBatch.map((r) => r?._id).filter(Boolean)];
+                for (const cat of safeDailyCats) {
+                    const lunchLocked = isSlotLocked({
+                        dayIndex,
+                        meal: "lunch",
+                        categoryKey: cat,
+                    });
+                    const dinnerLocked = isSlotLocked({
+                        dayIndex,
+                        meal: "dinner",
+                        categoryKey: cat,
+                    });
+
+                    rebuilt.lunch[cat] = lunchLocked ? existing?.lunch?.[cat] ?? null : null;
+                    rebuilt.dinner[cat] = dinnerLocked ? existing?.dinner?.[cat] ?? null : null;
+                }
+
+                return rebuilt;
+            });
+
+            // ids déjà pris (verrouillés conservés)
+            let exclude = [];
+            for (const day of base) {
+                if (day?.brunch?._id) exclude.push(day.brunch._id);
+                for (const cat of safeDailyCats) {
+                    if (day?.lunch?.[cat]?._id) exclude.push(day.lunch[cat]._id);
+                    if (day?.dinner?.[cat]?._id) exclude.push(day.dinner[cat]._id);
+                }
             }
 
+            // brunch : on remplit uniquement les jours où brunch est null (donc non verrouillé)
+            if (hasBrunch) {
+                const targets = [];
+                for (let i = 0; i < d; i++) {
+                    if (base[i].brunch == null) targets.push(i);
+                }
+
+                if (targets.length > 0) {
+                    let picked = [];
+                    let localExclude = [...exclude];
+
+                    for (let round = 0; round < 5 && picked.length < targets.length; round++) {
+                        const batch = await fetchRandomRecipes({
+                            count: targets.length - picked.length,
+                            excludeIds: localExclude,
+                            category: "brunch",
+                        });
+                        if (batch.length === 0) break;
+                        picked = [...picked, ...batch];
+                        localExclude = [
+                            ...localExclude,
+                            ...batch.map((r) => r?._id).filter(Boolean),
+                        ];
+                    }
+
+                    while (picked.length < targets.length) {
+                        const batch = await fetchRandomRecipes({
+                            count: targets.length - picked.length,
+                            excludeIds: [],
+                            category: "brunch",
+                        });
+                        if (batch.length === 0) break;
+                        picked = [...picked, ...batch];
+                    }
+
+                    targets.forEach((dayIndex, idx) => {
+                        base[dayIndex].brunch = picked[idx] ?? null;
+                    });
+
+                    exclude = [
+                        ...exclude,
+                        ...picked.map((r) => r?._id).filter(Boolean),
+                    ];
+                }
+            }
+
+            // lunch/dinner par catégorie
             for (const cat of safeDailyCats) {
-                const needed = d * 2;
+                const targets = []; // {dayIndex, meal}
+                for (let i = 0; i < d; i++) {
+                    if (base[i].lunch?.[cat] == null) targets.push({ dayIndex: i, meal: "lunch" });
+                    if (base[i].dinner?.[cat] == null) targets.push({ dayIndex: i, meal: "dinner" });
+                }
+
+                if (targets.length === 0) continue;
 
                 let picked = [];
                 let localExclude = [...exclude];
 
-                for (let round = 0; round < 5 && picked.length < needed; round++) {
+                for (let round = 0; round < 5 && picked.length < targets.length; round++) {
                     const batch = await fetchRandomRecipes({
-                        count: needed - picked.length,
+                        count: targets.length - picked.length,
                         excludeIds: localExclude,
                         category: cat,
                     });
                     if (batch.length === 0) break;
                     picked = [...picked, ...batch];
-                    localExclude = [...localExclude, ...batch.map((r) => r?._id).filter(Boolean)];
+                    localExclude = [
+                        ...localExclude,
+                        ...batch.map((r) => r?._id).filter(Boolean),
+                    ];
                 }
 
-                while (picked.length < needed) {
+                while (picked.length < targets.length) {
                     const batch = await fetchRandomRecipes({
-                        count: needed - picked.length,
+                        count: targets.length - picked.length,
                         excludeIds: [],
                         category: cat,
                     });
@@ -209,16 +470,18 @@ export default function Generator() {
                     picked = [...picked, ...batch];
                 }
 
-                for (let i = 0; i < d; i++) {
-                    base[i].lunch[cat] = picked[i * 2] ?? null;
-                    base[i].dinner[cat] = picked[i * 2 + 1] ?? null;
-                }
+                targets.forEach((t, idx) => {
+                    const r = picked[idx] ?? null;
+                    base[t.dayIndex][t.meal][cat] = r;
+                });
 
-                exclude = [...exclude, ...picked.map((r) => r?._id).filter(Boolean)];
+                exclude = [
+                    ...exclude,
+                    ...picked.map((r) => r?._id).filter(Boolean),
+                ];
             }
 
             setMenus(base);
-            persistState(base, d, categories);
         } catch (e) {
             console.error(e);
             setError("Impossible de générer des menus pour le moment.");
@@ -227,17 +490,21 @@ export default function Generator() {
         }
     }, [
         buildEmptyMenuDay,
-        categories,
-        currentRecipeIds,
         d,
         fetchRandomRecipes,
         hasBrunch,
-        persistState,
+        isSlotLocked,
+        menus,
         safeDailyCats,
     ]);
 
     const regenerateOne = useCallback(
         async ({ dayIndex, meal, categoryKey }) => {
+            // si verrouillé (slot ou jour), on ne fait rien
+            if (isSlotLocked({ dayIndex, meal, categoryKey: categoryKey ?? meal })) {
+                return;
+            }
+
             setLoading(true);
             setError("");
 
@@ -248,6 +515,7 @@ export default function Generator() {
                         : menus?.[dayIndex]?.[meal]?.[categoryKey];
 
                 const currentId = current?._id;
+
                 const exclude = currentRecipeIds.filter((id) => id && id !== currentId);
 
                 const firstTry = await fetchRandomRecipes({
@@ -258,15 +526,17 @@ export default function Generator() {
 
                 const replacement =
                     firstTry?.[0] ??
-                    (await fetchRandomRecipes({
-                        count: 1,
-                        excludeIds: [],
-                        category: meal === "brunch" ? "brunch" : categoryKey,
-                    }))?.[0] ??
+                    (
+                        await fetchRandomRecipes({
+                            count: 1,
+                            excludeIds: [],
+                            category: meal === "brunch" ? "brunch" : categoryKey,
+                        })
+                    )?.[0] ??
                     null;
 
-                setMenus((prev) => {
-                    const next = prev.map((m) => {
+                setMenus((prev) =>
+                    prev.map((m) => {
                         if (m.dayIndex !== dayIndex) return m;
 
                         if (meal === "brunch") {
@@ -280,12 +550,8 @@ export default function Generator() {
                                 [categoryKey]: replacement,
                             },
                         };
-                    });
-
-                    // persiste immédiatement la nouvelle version
-                    persistState(next, d, categories);
-                    return next;
-                });
+                    })
+                );
             } catch (e) {
                 console.error(e);
                 setError("Impossible de regénérer cette recette.");
@@ -293,33 +559,42 @@ export default function Generator() {
                 setLoading(false);
             }
         },
-        [categories, currentRecipeIds, d, fetchRandomRecipes, menus, persistState]
+        [currentRecipeIds, fetchRandomRecipes, isSlotLocked, menus]
     );
 
-    // Au montage: restore si possible, sinon génération auto
+    // Si on arrive sans menus et sans sauvegarde → on génère.
     useEffect(() => {
-        const raw = sessionStorage.getItem(STORAGE_KEY);
-        const parsed = raw ? safeJsonParse(raw) : null;
-
-        if (parsed?.version === 1 && Array.isArray(parsed.menus) && parsed.menus.length > 0) {
-            if (Number.isFinite(parsed.days)) setDays(clampInt(parsed.days, 1, 14, 7));
-            if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
-                setCategories(parsed.categories.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
-            }
-            setMenus(parsed.menus);
-            return;
+        if (!menus || menus.length === 0) {
+            generateMenus();
         }
-
-        generateMenus();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Persiste aussi si days/categories changent (au moins pour garder les prefs)
+    // si d diminue, on tronque menus + verrous jours/slots hors range
     useEffect(() => {
-        if (menus?.length > 0) {
-            persistState(menus, d, categories);
-        }
-    }, [categories, d, menus, persistState]);
+        setMenus((prev) => {
+            if (!Array.isArray(prev) || prev.length <= d) return prev;
+            return prev.slice(0, d);
+        });
+
+        setLockedDays((prev) => {
+            const next = { ...(prev || {}) };
+            for (const k of Object.keys(next)) {
+                const dayIndex = Number.parseInt(k, 10);
+                if (!Number.isFinite(dayIndex) || dayIndex >= d) delete next[k];
+            }
+            return next;
+        });
+
+        setLockedSlots((prev) => {
+            const next = { ...(prev || {}) };
+            for (const k of Object.keys(next)) {
+                const parsed = parseSlotKey(k);
+                if (!Number.isFinite(parsed.dayIndex) || parsed.dayIndex >= d) delete next[k];
+            }
+            return next;
+        });
+    }, [d]);
 
     const badgeCategories = useMemo(
         () => CATEGORY_ORDER.filter((c) => !HIDDEN_ON_GENERATOR.has(c)),
@@ -337,7 +612,7 @@ export default function Generator() {
             </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
-                        Retrouve ici toutes les recettes que tu as partagées.
+                        Génère tes menus, verrouille des recettes, et reviens plus tard sans rien perdre.
                     </p>
                 </div>
 
@@ -345,7 +620,9 @@ export default function Generator() {
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <label className="space-y-1">
-                                <div className="text-sm font-semibold text-zinc-700">Nombre de jours</div>
+                                <div className="text-sm font-semibold text-zinc-700">
+                                    Nombre de jours
+                                </div>
                                 <input
                                     className="input h-10"
                                     type="number"
@@ -406,79 +683,167 @@ export default function Generator() {
                         >
                             Liste de course
                         </button>
+
+                        {/* 🔓 Déverrouiller tout */}
+                        <button
+                            className="btn-secondary-sm whitespace-nowrap w-full md:w-auto inline-flex items-center justify-center gap-2"
+                            onClick={unlockAll}
+                            disabled={loading}
+                            title="Enlève tous les verrous (recettes + journées)"
+                        >
+                            <FiUnlock />
+                            Déverrouiller tout
+                        </button>
                     </div>
 
                     {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {menus.map((menu) => (
-                        <div
-                            key={menu.dayIndex}
-                            className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4"
-                        >
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-primary font-extrabold">Jour {menu.dayIndex + 1}</h3>
-                            </div>
+                    {menus.map((menu) => {
+                        const dayLocked = isDayLocked(menu.dayIndex);
 
-                            {hasBrunch && (
-                                <div className="mb-4">
-                                    <SectionTitle icon="☕">Brunch</SectionTitle>
-                                    <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
-                                        <GeneratorRecipeCard
-                                            embedded
-                                            recipe={menu.brunch}
-                                            onRegenerate={() =>
-                                                regenerateOne({ dayIndex: menu.dayIndex, meal: "brunch" })
+                        return (
+                            <div
+                                key={menu.dayIndex}
+                                className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4"
+                            >
+                                <div className="flex items-center justify-between mb-3 gap-2">
+                                    <h3 className="text-primary font-extrabold">
+                                        Jour {menu.dayIndex + 1}
+                                    </h3>
+
+                                    <div className="flex items-center gap-2">
+                                        {/* 📅 verrouiller / déverrouiller la journée */}
+                                        <button
+                                            type="button"
+                                            className={[
+                                                "btn-secondary-sm",
+                                                "whitespace-nowrap",
+                                                dayLocked ? "ring-2 ring-primary/30" : "",
+                                            ].join(" ")}
+                                            onClick={() => toggleDayLock(menu.dayIndex)}
+                                            title={
+                                                dayLocked
+                                                    ? "La journée est verrouillée : aucune recette ne peut être regénérée"
+                                                    : "Verrouiller toute la journée"
                                             }
-                                        />
+                                        >
+                                            {dayLocked ? "Journée verrouillée" : "Verrouiller journée"}
+                                        </button>
+
+                                        {/* Déverrouiller jour (utile si tu veux juste enlever les locks du jour) */}
+                                        {dayLocked && (
+                                            <button
+                                                type="button"
+                                                className="btn-secondary-sm whitespace-nowrap"
+                                                onClick={() => unlockDay(menu.dayIndex)}
+                                                title="Déverrouille la journée et enlève aussi les verrous de recettes de ce jour"
+                                            >
+                                                Déverrouiller jour
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            )}
 
-                            <div className="mb-4">
-                                <SectionTitle icon="🍽️">Midi</SectionTitle>
-                                <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
-                                    {orderedDailyCats.map((cat) => (
-                                        <GeneratorRecipeCard
-                                            key={`lunch-${cat}`}
-                                            embedded
-                                            label={getCategoryLabel(cat)}
-                                            recipe={menu.lunch?.[cat] ?? null}
-                                            onRegenerate={() =>
-                                                regenerateOne({
+                                {hasBrunch && (
+                                    <div className="mb-4">
+                                        <SectionTitle icon="☕">Brunch</SectionTitle>
+                                        <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                            <GeneratorRecipeCard
+                                                embedded
+                                                recipe={menu.brunch}
+                                                locked={isSlotLocked({
+                                                    dayIndex: menu.dayIndex,
+                                                    meal: "brunch",
+                                                    categoryKey: "brunch",
+                                                })}
+                                                onToggleLock={() =>
+                                                    toggleSlotLock({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "brunch",
+                                                        categoryKey: "brunch",
+                                                    })
+                                                }
+                                                onRegenerate={() =>
+                                                    regenerateOne({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "brunch",
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mb-4">
+                                    <SectionTitle icon="🍽️">Midi</SectionTitle>
+                                    <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                        {orderedDailyCats.map((cat) => (
+                                            <GeneratorRecipeCard
+                                                key={`lunch-${cat}`}
+                                                embedded
+                                                label={getCategoryLabel(cat)}
+                                                recipe={menu.lunch?.[cat] ?? null}
+                                                locked={isSlotLocked({
                                                     dayIndex: menu.dayIndex,
                                                     meal: "lunch",
                                                     categoryKey: cat,
-                                                })
-                                            }
-                                        />
-                                    ))}
+                                                })}
+                                                onToggleLock={() =>
+                                                    toggleSlotLock({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "lunch",
+                                                        categoryKey: cat,
+                                                    })
+                                                }
+                                                onRegenerate={() =>
+                                                    regenerateOne({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "lunch",
+                                                        categoryKey: cat,
+                                                    })
+                                                }
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <SectionTitle icon="🌙">Soir</SectionTitle>
-                                <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
-                                    {orderedDailyCats.map((cat) => (
-                                        <GeneratorRecipeCard
-                                            key={`dinner-${cat}`}
-                                            embedded
-                                            label={getCategoryLabel(cat)}
-                                            recipe={menu.dinner?.[cat] ?? null}
-                                            onRegenerate={() =>
-                                                regenerateOne({
+                                <div>
+                                    <SectionTitle icon="🌙">Soir</SectionTitle>
+                                    <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
+                                        {orderedDailyCats.map((cat) => (
+                                            <GeneratorRecipeCard
+                                                key={`dinner-${cat}`}
+                                                embedded
+                                                label={getCategoryLabel(cat)}
+                                                recipe={menu.dinner?.[cat] ?? null}
+                                                locked={isSlotLocked({
                                                     dayIndex: menu.dayIndex,
                                                     meal: "dinner",
                                                     categoryKey: cat,
-                                                })
-                                            }
-                                        />
-                                    ))}
+                                                })}
+                                                onToggleLock={() =>
+                                                    toggleSlotLock({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "dinner",
+                                                        categoryKey: cat,
+                                                    })
+                                                }
+                                                onRegenerate={() =>
+                                                    regenerateOne({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "dinner",
+                                                        categoryKey: cat,
+                                                    })
+                                                }
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {menus.length === 0 && !loading && (
