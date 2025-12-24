@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { API_BASE_URL } from "../apiBase";
 import placeholderImg from "../assets/heroSection.jpg";
 import { getBadgeClass, getCategoryLabel } from "../utils/categories";
+import { formatDuration } from "../utils/formatDuration";
 
 export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDelete, onOpen }) {
     const categoryValue = item?.category ?? "entree";
@@ -62,9 +63,9 @@ export default function RecipeCard({ item, path, isFav, onToggleFav, onRequestDe
                         <div className="flex flex-col items-start leading-tight gap-1">
                             <div className="flex items-center gap-1">
                                 <span>⏱️</span>
-                                <span className="font-semibold text-primary">{item.time}</span>
+                                <span className="font-semibold text-primary">{formatDuration(item.time)}</span>
                             </div>
-                            <span className="text-xs text-zinc-400">Minutes</span>
+                            <span className="text-xs text-zinc-400">Durée</span>
                         </div>
 
                         <div className="flex flex-col items-start leading-tight gap-1">

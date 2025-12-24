@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FiRefreshCw } from "react-icons/fi";
+import { formatDuration } from "../utils/formatDuration";
 
 export default function GeneratorRecipeCard({
                                                 label,
@@ -64,12 +65,13 @@ export default function GeneratorRecipeCard({
         );
     }
 
+    const handleOpen = () => {
+        navigate(`/recipe/${recipe._id}`);
+    };
+
     return (
-        <article
-            onClick={() => navigate(`/recipe/${recipe._id}`)}
-            className={baseContainer}
-        >
-            {/* bouton regen (discret, visible au hover) */}
+        <article className={baseContainer} onClick={handleOpen}>
+            {/* regenerate */}
             <button
                 type="button"
                 onClick={(e) => {
@@ -109,8 +111,7 @@ export default function GeneratorRecipeCard({
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
         <span className="inline-flex items-center gap-1 rounded-full bg-zinc-50 px-2 py-1 ring-1 ring-zinc-100">
           <span>⏱️</span>
-          <span className="font-semibold text-primary">{recipe.time}</span>
-          <span>Mins</span>
+          <span className="font-semibold text-primary">{formatDuration(recipe.time)}</span>
         </span>
 
                 <span className="inline-flex items-center gap-1 rounded-full bg-zinc-50 px-2 py-1 ring-1 ring-zinc-100">

@@ -3,6 +3,7 @@ import { useLoaderData } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
 import { getCategoryLabel } from "../utils/categories.js";
+import { formatDuration } from "../utils/formatDuration";
 
 export default function RecipeDetails() {
     const recipe = useLoaderData();
@@ -48,7 +49,7 @@ export default function RecipeDetails() {
 
                             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
                                 <span aria-hidden>⏱</span>
-                                <span>{recipe?.time ?? "—"} Mins</span>
+                                <span>{formatDuration(recipe?.time)}</span>
                             </div>
 
                             <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-200">
