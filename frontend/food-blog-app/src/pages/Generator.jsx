@@ -9,7 +9,7 @@ import {
 import GeneratorRecipeCard from "../components/GeneratorRecipeCard";
 import usePageTitle from "../hooks/usePageTitle";
 import { useNavigate } from "react-router-dom";
-import { FiUnlock } from "react-icons/fi";
+import { FiUnlock, FiLock, FiUnlock as FiUnlockIcon } from "react-icons/fi";
 
 const clampInt = (value, min, max, fallback) => {
     const n = Number.parseInt(value, 10);
@@ -28,9 +28,9 @@ function SectionTitle({ icon, children }) {
     return (
         <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
-          {icon}
-        </span>
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+                    {icon}
+                </span>
                 <h4 className="text-base font-bold tracking-tight text-zinc-900">
                     {children}
                 </h4>
@@ -736,10 +736,10 @@ export default function Generator() {
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-            <span className="relative inline-block">
-              Mes recettes
-              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-            </span>
+                        <span className="relative inline-block">
+                            Mes recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Génère tes menus, verrouille des recettes, et reviens plus tard sans rien perdre.
@@ -865,7 +865,7 @@ export default function Generator() {
                                     </h3>
 
                                     <div className="flex items-center gap-2">
-                                        {/* 📅 verrouiller / déverrouiller la journée */}
+                                        {/* ✅ Un seul bouton icône pour lock/unlock journée */}
                                         <button
                                             type="button"
                                             className={[
@@ -876,24 +876,17 @@ export default function Generator() {
                                             onClick={() => toggleDayLock(menu.dayIndex)}
                                             title={
                                                 dayLocked
-                                                    ? "La journée est verrouillée : aucune recette ne peut être regénérée"
+                                                    ? "Journée verrouillée : aucune recette ne peut être regénérée"
                                                     : "Verrouiller toute la journée"
                                             }
+                                            aria-label={
+                                                dayLocked
+                                                    ? "Déverrouiller la journée"
+                                                    : "Verrouiller la journée"
+                                            }
                                         >
-                                            {dayLocked ? "Journée verrouillée" : "Verrouiller journée"}
+                                            {dayLocked ? <FiLock /> : <FiUnlockIcon />}
                                         </button>
-
-                                        {/* Déverrouiller jour */}
-                                        {dayLocked && (
-                                            <button
-                                                type="button"
-                                                className="btn-secondary-sm whitespace-nowrap"
-                                                onClick={() => unlockDay(menu.dayIndex)}
-                                                title="Déverrouille la journée et enlève aussi les verrous de recettes de ce jour"
-                                            >
-                                                Déverrouiller jour
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
 
