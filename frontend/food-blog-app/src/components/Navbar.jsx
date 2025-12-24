@@ -107,7 +107,7 @@ export default function Navbar() {
                                 to="/generator"
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
-                                Générateur
+                                Mon menu
                             </NavLink>
                         </li>
                         <li>
@@ -125,7 +125,7 @@ export default function Navbar() {
                                 onClick={openLoginIfNeeded}
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
-                                Mes Favoris
+                                Mes favoris
                             </NavLink>
                         </li>
                         <li>

@@ -844,7 +844,7 @@ export default function Generator() {
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-6">
                     <h2 className="mb-8">
                         <span className="relative inline-block">
-                            Mon Menu
+                            Mon menu
                             <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
                         </span>
                     </h2>
@@ -955,7 +955,7 @@ export default function Generator() {
                                         onClick={() => navigate("/shopping-list", { state: { menus } })}
                                         disabled={loading || !menus?.length}
                                     >
-                                        Liste de course
+                                        Liste de courses
                                     </button>
 
                                     <button
