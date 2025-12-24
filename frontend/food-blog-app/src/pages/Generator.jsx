@@ -28,9 +28,9 @@ function SectionTitle({ icon, children }) {
     return (
         <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
-                    {icon}
-                </span>
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+          {icon}
+        </span>
                 <h4 className="text-base font-bold tracking-tight text-zinc-900">
                     {children}
                 </h4>
@@ -46,6 +46,7 @@ const LS_LOCKED_SLOTS = "generator:lockedSlots:v1";
 const LS_LOCKED_DAYS = "generator:lockedDays:v1";
 const LS_DAYS = "generator:days:v1";
 const LS_CATEGORIES = "generator:categories:v1";
+const LS_START_DATE = "generator:startDate:v1";
 
 /** slot key: dayIndex|meal|categoryKey */
 const slotKey = ({ dayIndex, meal, categoryKey }) =>
@@ -84,10 +85,79 @@ const safeJsonParse = (raw) => {
     }
 };
 
+/** ---------- Dates helpers (no libs) ---------- */
+const pad2 = (n) => String(n).padStart(2, "0");
+
+/**
+ * YYYY-MM-DD en "local" (évite les décalages liés à toISOString() en UTC)
+ */
+const toLocalISODate = (date) => {
+    const d = date instanceof Date ? date : new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+
+/**
+ * Construit un Date local à minuit à partir d'un YYYY-MM-DD
+ */
+const fromISOToLocalDate = (iso) => {
+    // iso = "YYYY-MM-DD"
+    return new Date(`${iso}T00:00:00`);
+};
+
+const addDaysISO = (startISO, offsetDays) => {
+    const d = fromISOToLocalDate(startISO);
+    d.setDate(d.getDate() + offsetDays);
+    return toLocalISODate(d);
+};
+
+const isSameISODate = (a, b) => String(a) === String(b);
+
+const capitalizeFirst = (s) => {
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+const formatDayLabelForCard = ({ dateISO, todayISO }) => {
+    // Affichage demandé : Aujourd’hui / Demain pour les 2 premiers, puis "Vendredi 26 déc."
+    const date = fromISOToLocalDate(dateISO);
+
+    const diffDays = (() => {
+        const t = fromISOToLocalDate(todayISO);
+        const ms = date.getTime() - t.getTime();
+        return Math.round(ms / (1000 * 60 * 60 * 24));
+    })();
+
+    if (diffDays === 0) return "Aujourd’hui";
+    if (diffDays === 1) return "Demain";
+
+    const fmt = new Intl.DateTimeFormat("fr-FR", {
+        weekday: "long",
+        day: "2-digit",
+        month: "short",
+    });
+
+    // Exemple fr-FR souvent: "vendredi 26 déc."
+    return capitalizeFirst(fmt.format(date));
+};
+
 export default function Generator() {
     usePageTitle("Générateur");
 
     const navigate = useNavigate();
+
+    const todayISO = useMemo(() => toLocalISODate(new Date()), []);
+
+    /**
+     * ✅ Date de départ (datepicker)
+     * - défaut : aujourd'hui
+     * - persistée en localStorage
+     */
+    const [startDate, setStartDate] = useState(() => {
+        const saved = safeGetLS(LS_START_DATE);
+        // si saved est invalide/absent -> today
+        if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+        return toLocalISODate(new Date());
+    });
 
     /**
      * ✅ Hydratation synchronisée dès le 1er rendu (évite l’écrasement par l’auto-génération)
@@ -144,6 +214,10 @@ export default function Generator() {
     const [error, setError] = useState("");
 
     /** ---------- Persist to localStorage ---------- */
+    useEffect(() => {
+        safeSetLS(LS_START_DATE, String(startDate));
+    }, [startDate]);
+
     useEffect(() => {
         safeSetLS(LS_DAYS, String(days));
     }, [days]);
@@ -343,13 +417,30 @@ export default function Generator() {
 
             return {
                 dayIndex,
+                date: addDaysISO(startDate, dayIndex), // ✅ on stocke la date (YYYY-MM-DD)
                 brunch: hasBrunch ? null : undefined,
                 lunch,
                 dinner,
             };
         },
-        [hasBrunch, safeDailyCats]
+        [hasBrunch, safeDailyCats, startDate]
     );
+
+    /**
+     * Si l'utilisateur change la date de départ :
+     * - on met à jour la propriété `date` de chaque jour existant
+     * - sans toucher aux recettes/verrous
+     */
+    useEffect(() => {
+        setMenus((prev) => {
+            if (!Array.isArray(prev) || prev.length === 0) return prev;
+            return prev.map((m, idx) => ({
+                ...m,
+                dayIndex: m?.dayIndex ?? idx,
+                date: addDaysISO(startDate, idx),
+            }));
+        });
+    }, [startDate]);
 
     /**
      * Génération “intelligente” :
@@ -626,15 +717,29 @@ export default function Generator() {
         []
     );
 
+    const startDateHelperLabel = useMemo(() => {
+        if (isSameISODate(startDate, todayISO)) return "Aujourd’hui";
+        // Optionnel : afficher "Demain" si startDate = today + 1
+        const tomorrowISO = addDaysISO(todayISO, 1);
+        if (isSameISODate(startDate, tomorrowISO)) return "Demain";
+
+        const fmt = new Intl.DateTimeFormat("fr-FR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "short",
+        });
+        return capitalizeFirst(fmt.format(fromISOToLocalDate(startDate)));
+    }, [startDate, todayISO]);
+
     return (
         <section className="container py-8">
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-                        <span className="relative inline-block">
-                            Mes recettes
-                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-                        </span>
+            <span className="relative inline-block">
+              Mes recettes
+              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+            </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Génère tes menus, verrouille des recettes, et reviens plus tard sans rien perdre.
@@ -644,6 +749,23 @@ export default function Generator() {
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <div className="flex flex-col md:flex-row md:items-center gap-4">
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {/* ✅ Datepicker à gauche */}
+                            <label className="space-y-1">
+                                <div className="text-sm font-semibold text-zinc-700">
+                                    Date de départ
+                                </div>
+                                <input
+                                    className="input h-10"
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v && /^\d{4}-\d{2}-\d{2}$/.test(v)) setStartDate(v);
+                                    }}
+                                />
+                                <div className="text-xs text-zinc-500">{startDateHelperLabel}</div>
+                            </label>
+
                             <label className="space-y-1">
                                 <div className="text-sm font-semibold text-zinc-700">
                                     Nombre de jours
@@ -725,8 +847,12 @@ export default function Generator() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {menus.map((menu) => {
+                    {menus.map((menu, idx) => {
                         const dayLocked = isDayLocked(menu.dayIndex);
+
+                        // ✅ label de carte basé sur `menu.date`
+                        const dateISO = menu?.date ?? addDaysISO(startDate, idx);
+                        const dayTitle = formatDayLabelForCard({ dateISO, todayISO });
 
                         return (
                             <div
@@ -735,7 +861,7 @@ export default function Generator() {
                             >
                                 <div className="flex items-center justify-between mb-3 gap-2">
                                     <h3 className="text-primary font-extrabold">
-                                        Jour {menu.dayIndex + 1}
+                                        {dayTitle}
                                     </h3>
 
                                     <div className="flex items-center gap-2">
