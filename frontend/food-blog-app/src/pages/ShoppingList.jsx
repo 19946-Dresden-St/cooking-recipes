@@ -130,16 +130,6 @@ const parseIngredientLine = (line) => {
     const raw = cleanSpaces(line);
     if (!raw) return null;
 
-    // Cas sans quantité => "sel", "poivre", "huile d'olive"
-    // OU quantité non détectable => on laisse en "sans qty"
-    // On détecte formats:
-    // - "1 oeuf"
-    // - "1,5 l lait"
-    // - "1/2 citron"
-    // - "100g farine" ou "100 g farine"
-    // - "2 tranches de pain"
-    // - "4 oeufs"
-    //
     // 1) extraire qty au début
     const mQty = raw.match(/^(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+)\s*(.*)$/);
     if (!mQty) return { qty: null, unit: "", label: raw, rawLabel: raw };
@@ -150,13 +140,6 @@ const parseIngredientLine = (line) => {
     let rest = cleanSpaces(mQty[2] ?? "");
     if (!rest) return { qty: null, unit: "", label: raw, rawLabel: raw };
 
-    // 2) gérer unité collée à la quantité (ex: "100g farine")
-    // Si rest commence par une unité collée genre "g", "kg", "ml", "l", "cl" etc.
-    // On a déjà retiré qty, donc ici on gère uniquement:
-    // - "g farine" (si l'utilisateur avait "100g farine", rest = "g farine" ? non)
-    // En réalité avec regex ci-dessus: "100g farine" => mQty[1]="100" mQty[2]="g farine"
-    // donc parfait.
-    //
     // 3) extraire une unité si le 1er token ressemble à une unité
     const tokens = rest.split(" ");
     const first = tokens[0] ?? "";
@@ -165,9 +148,6 @@ const parseIngredientLine = (line) => {
     let unit = "";
     let label = rest;
 
-    // On considère unité si:
-    // - c’est un alias connu
-    // - ou c’est un token très court type "g" "kg" "ml" "l" "cl"
     const looksLikeUnit =
         UNIT_ALIASES.has(cleanSpaces(stripDiacritics(first.toLowerCase())).replace(/[().]/g, "")) ||
         /^(g|kg|ml|cl|l)$/i.test(first);
@@ -176,12 +156,10 @@ const parseIngredientLine = (line) => {
         unit = unitNorm || cleanSpaces(first);
         label = cleanSpaces(tokens.slice(1).join(" "));
         if (!label) {
-            // si on a "1 g" sans label, on retombe sur brut
             return { qty: null, unit: "", label: raw, rawLabel: raw };
         }
     }
 
-    // 4) label "joli" + label clé stable
     return {
         qty,
         unit,
@@ -191,11 +169,22 @@ const parseIngredientLine = (line) => {
 };
 
 const formatQty = (n) => {
-    // affichage: si entier => pas de .0
     if (Math.abs(n - Math.round(n)) < 1e-9) return String(Math.round(n));
-    // limiter le bruit type 0.3333333
     const rounded = Math.round(n * 100) / 100;
     return String(rounded).replace(".", ",");
+};
+
+/**
+ * ✅ Respecte le choix Midi/Soir par jour (enabledMeals)
+ * - Par défaut: true/true si absent (compat legacy)
+ */
+const normalizeEnabledMeals = (day) => {
+    const base = day && typeof day === "object" ? day : {};
+    const em = base.enabledMeals && typeof base.enabledMeals === "object" ? base.enabledMeals : {};
+    return {
+        lunch: em.lunch !== false,
+        dinner: em.dinner !== false,
+    };
 };
 
 export default function ShoppingList() {
@@ -219,12 +208,10 @@ export default function ShoppingList() {
             const labelKey = normalizeLabelKey(parsed.label);
             if (!labelKey) return;
 
-            // On inclut l'unité dans la clé => "200 g farine" et "2 kg farine" resteront séparés (pas de conversion)
             const unitKey = normalizeUnit(parsed.unit);
             const key = `${unitKey}::${labelKey}`;
 
             if (parsed.qty === null) {
-                // sans quantité
                 if (!singles.has(key)) singles.set(key, parsed.label);
                 return;
             }
@@ -235,7 +222,6 @@ export default function ShoppingList() {
             } else {
                 totals.set(key, {
                     ...prev,
-                    // garder le label le plus “joli” (le premier) et additionner
                     qty: prev.qty + parsed.qty,
                 });
             }
@@ -244,41 +230,52 @@ export default function ShoppingList() {
         for (const day of menus) {
             if (!day) continue;
 
-            // brunch
+            const enabledMeals = normalizeEnabledMeals(day);
+
+            // brunch (toujours inclus si présent)
             if (day.brunch?.ingredients) {
                 for (const ing of day.brunch.ingredients) pushLine(ing);
             }
 
-            // lunch/dinner
-            for (const mealKey of ["lunch", "dinner"]) {
-                const meal = day?.[mealKey];
-                if (!meal) continue;
+            // ✅ lunch seulement si activé
+            if (enabledMeals.lunch) {
+                const meal = day?.lunch;
+                if (meal) {
+                    for (const catKey of Object.keys(meal)) {
+                        const recipe = meal[catKey];
+                        const ingredients = recipe?.ingredients;
+                        if (!Array.isArray(ingredients)) continue;
+                        for (const ing of ingredients) pushLine(ing);
+                    }
+                }
+            }
 
-                for (const catKey of Object.keys(meal)) {
-                    const recipe = meal[catKey];
-                    const ingredients = recipe?.ingredients;
-                    if (!Array.isArray(ingredients)) continue;
-
-                    for (const ing of ingredients) pushLine(ing);
+            // ✅ dinner seulement si activé
+            if (enabledMeals.dinner) {
+                const meal = day?.dinner;
+                if (meal) {
+                    for (const catKey of Object.keys(meal)) {
+                        const recipe = meal[catKey];
+                        const ingredients = recipe?.ingredients;
+                        if (!Array.isArray(ingredients)) continue;
+                        for (const ing of ingredients) pushLine(ing);
+                    }
                 }
             }
         }
 
         const items = [];
 
-        // d'abord ceux avec quantités
         for (const [, v] of totals) {
             const q = formatQty(v.qty);
             const u = v.unit ? `${v.unit} ` : "";
             items.push(`${q} ${u}${v.labelPretty}`.trim());
         }
 
-        // puis ceux sans quantités (ex: sel)
         for (const [, label] of singles) {
             items.push(label);
         }
 
-        // tri alpha “simple”
         items.sort((a, b) => a.localeCompare(b, "fr"));
 
         return items;
