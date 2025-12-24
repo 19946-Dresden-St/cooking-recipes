@@ -1021,10 +1021,15 @@ export default function Generator() {
                                 </div>
 
                                 {/* ✅ Choix Midi/Soir */}
-                                <div className="mb-4 flex items-center gap-4">
-                                    <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+                                <div className="mb-4 flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-zinc-500 mr-1">
+                                    Repas
+                                  </span>
+
+                                    <label className="relative">
                                         <input
                                             type="checkbox"
+                                            className="peer sr-only"
                                             checked={!!lunchEnabled}
                                             onChange={(e) =>
                                                 setMealEnabled({
@@ -1034,12 +1039,23 @@ export default function Generator() {
                                                 })
                                             }
                                         />
-                                        Midi
+                                        <span
+                                                                                className="
+                                            inline-flex h-8 items-center justify-center
+                                            rounded-full px-3 text-sm font-semibold
+                                            ring-1 transition
+                                            peer-checked:bg-primary/10 peer-checked:text-primary peer-checked:ring-primary/30
+                                            bg-white text-zinc-700 ring-zinc-200 hover:bg-zinc-50
+                                          "
+                                                                            >
+                                          Midi
+                                        </span>
                                     </label>
 
-                                    <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+                                    <label className="relative">
                                         <input
                                             type="checkbox"
+                                            className="peer sr-only"
                                             checked={!!dinnerEnabled}
                                             onChange={(e) =>
                                                 setMealEnabled({
@@ -1049,9 +1065,20 @@ export default function Generator() {
                                                 })
                                             }
                                         />
-                                        Soir
+                                        <span
+                                            className="
+                                            inline-flex h-8 items-center justify-center
+                                            rounded-full px-3 text-sm font-semibold
+                                            ring-1 transition
+                                            peer-checked:bg-primary/10 peer-checked:text-primary peer-checked:ring-primary/30
+                                            bg-white text-zinc-700 ring-zinc-200 hover:bg-zinc-50
+                                          "
+                                                                            >
+                                          Soir
+                                        </span>
                                     </label>
                                 </div>
+
 
                                 {hasBrunch && (
                                     <div className="mb-4">
