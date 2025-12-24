@@ -28,9 +28,9 @@ function SectionTitle({ icon, children }) {
     return (
         <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
-          {icon}
-        </span>
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+                    {icon}
+                </span>
                 <h4 className="text-base font-bold tracking-tight text-zinc-900">
                     {children}
                 </h4>
@@ -60,101 +60,122 @@ const parseSlotKey = (key) => {
     };
 };
 
+const safeGetLS = (key) => {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+};
+
+const safeSetLS = (key, value) => {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // ignore
+    }
+};
+
+const safeJsonParse = (raw) => {
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+};
+
 export default function Generator() {
     usePageTitle("Générateur");
 
     const navigate = useNavigate();
 
-    const [days, setDays] = useState(7);
-    const [categories, setCategories] = useState(["plat"]);
+    /**
+     * ✅ Hydratation synchronisée dès le 1er rendu (évite l’écrasement par l’auto-génération)
+     * + tolérance si menus a été enregistré par erreur en "objet" au lieu de "tableau"
+     */
+    const [days, setDays] = useState(() => {
+        const saved = safeGetLS(LS_DAYS);
+        return saved ? clampInt(saved, 1, 14, 7) : 7;
+    });
 
-    const [menus, setMenus] = useState([]);
+    const [categories, setCategories] = useState(() => {
+        const saved = safeGetLS(LS_CATEGORIES);
+        if (!saved) return ["plat"];
+
+        const parsed = safeJsonParse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            const cleaned = parsed.filter((c) => !HIDDEN_ON_GENERATOR.has(c));
+            return cleaned.length > 0 ? cleaned : ["plat"];
+        }
+        return ["plat"];
+    });
+
+    const [menus, setMenus] = useState(() => {
+        const saved = safeGetLS(LS_MENUS);
+        if (!saved) return [];
+
+        const parsed = safeJsonParse(saved);
+
+        // cas normal
+        if (Array.isArray(parsed)) return parsed;
+
+        // ✅ cas "bug" observé : un objet au lieu d’un tableau
+        if (parsed && typeof parsed === "object") return [parsed];
+
+        return [];
+    });
+
+    // 🔒 verrous : slots + jours
+    const [lockedSlots, setLockedSlots] = useState(() => {
+        const saved = safeGetLS(LS_LOCKED_SLOTS);
+        if (!saved) return {};
+        const parsed = safeJsonParse(saved);
+        return parsed && typeof parsed === "object" ? parsed : {};
+    });
+
+    const [lockedDays, setLockedDays] = useState(() => {
+        const saved = safeGetLS(LS_LOCKED_DAYS);
+        if (!saved) return {};
+        const parsed = safeJsonParse(saved);
+        return parsed && typeof parsed === "object" ? parsed : {};
+    });
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // 🔒 verrous : slots + jours
-    const [lockedSlots, setLockedSlots] = useState(() => ({})); // { [slotKey]: true }
-    const [lockedDays, setLockedDays] = useState(() => ({})); // { [dayIndex]: true }
-
-    /** ---------- Restore from localStorage on mount ---------- */
-    useEffect(() => {
-        try {
-            const savedDays = localStorage.getItem(LS_DAYS);
-            const savedCats = localStorage.getItem(LS_CATEGORIES);
-            const savedMenus = localStorage.getItem(LS_MENUS);
-            const savedLockedSlots = localStorage.getItem(LS_LOCKED_SLOTS);
-            const savedLockedDays = localStorage.getItem(LS_LOCKED_DAYS);
-
-            if (savedDays) setDays(clampInt(savedDays, 1, 14, 7));
-
-            if (savedCats) {
-                const parsed = JSON.parse(savedCats);
-                if (Array.isArray(parsed) && parsed.length > 0) setCategories(parsed);
-            }
-
-            if (savedMenus) {
-                const parsed = JSON.parse(savedMenus);
-                if (Array.isArray(parsed)) setMenus(parsed);
-            }
-
-            if (savedLockedSlots) {
-                const parsed = JSON.parse(savedLockedSlots);
-                if (parsed && typeof parsed === "object") setLockedSlots(parsed);
-            }
-
-            if (savedLockedDays) {
-                const parsed = JSON.parse(savedLockedDays);
-                if (parsed && typeof parsed === "object") setLockedDays(parsed);
-            }
-        } catch {
-            // ignore
-        }
-    }, []);
-
     /** ---------- Persist to localStorage ---------- */
     useEffect(() => {
-        try {
-            localStorage.setItem(LS_DAYS, String(days));
-        } catch {
-            // ignore
-        }
+        safeSetLS(LS_DAYS, String(days));
     }, [days]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(LS_CATEGORIES, JSON.stringify(categories));
-        } catch {
-            // ignore
-        }
+        safeSetLS(LS_CATEGORIES, JSON.stringify(categories));
     }, [categories]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(LS_MENUS, JSON.stringify(menus));
-        } catch {
-            // ignore
-        }
+        // Toujours stocker un TABLEAU (même si 1 jour)
+        const normalized = Array.isArray(menus)
+            ? menus
+            : menus && typeof menus === "object"
+                ? [menus]
+                : [];
+        safeSetLS(LS_MENUS, JSON.stringify(normalized));
     }, [menus]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(LS_LOCKED_SLOTS, JSON.stringify(lockedSlots));
-        } catch {
-            // ignore
-        }
+        safeSetLS(LS_LOCKED_SLOTS, JSON.stringify(lockedSlots));
     }, [lockedSlots]);
 
     useEffect(() => {
-        try {
-            localStorage.setItem(LS_LOCKED_DAYS, JSON.stringify(lockedDays));
-        } catch {
-            // ignore
-        }
+        safeSetLS(LS_LOCKED_DAYS, JSON.stringify(lockedDays));
     }, [lockedDays]);
 
     /** ---------- Cleanup hidden categories once ---------- */
     useEffect(() => {
-        setCategories((prev) => prev.filter((c) => !HIDDEN_ON_GENERATOR.has(c)));
+        setCategories((prev) => {
+            const next = (prev || []).filter((c) => !HIDDEN_ON_GENERATOR.has(c));
+            return next.length > 0 ? next : ["plat"];
+        });
     }, []);
 
     const d = useMemo(() => clampInt(days, 1, 14, 7), [days]);
@@ -286,6 +307,8 @@ export default function Generator() {
     }, [menus]);
 
     const toggleCategory = useCallback((c) => {
+        if (HIDDEN_ON_GENERATOR.has(c)) return;
+
         setCategories((prev) => {
             const has = prev.includes(c);
             const next = has ? prev.filter((x) => x !== c) : [...prev, c];
@@ -562,13 +585,15 @@ export default function Generator() {
         [currentRecipeIds, fetchRandomRecipes, isSlotLocked, menus]
     );
 
-    // Si on arrive sans menus et sans sauvegarde → on génère.
+    /**
+     * ✅ Auto-génération uniquement si AUCUN menu n’existe déjà.
+     * (et surtout pas avec un useEffect([]) qui utiliserait les valeurs par défaut)
+     */
     useEffect(() => {
-        if (!menus || menus.length === 0) {
+        if (!loading && (!Array.isArray(menus) || menus.length === 0)) {
             generateMenus();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [menus, loading, generateMenus]);
 
     // si d diminue, on tronque menus + verrous jours/slots hors range
     useEffect(() => {
@@ -606,10 +631,10 @@ export default function Generator() {
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-            <span className="relative inline-block">
-              Mes recettes
-              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-            </span>
+                        <span className="relative inline-block">
+                            Mes recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Génère tes menus, verrouille des recettes, et reviens plus tard sans rien perdre.
@@ -732,7 +757,7 @@ export default function Generator() {
                                             {dayLocked ? "Journée verrouillée" : "Verrouiller journée"}
                                         </button>
 
-                                        {/* Déverrouiller jour (utile si tu veux juste enlever les locks du jour) */}
+                                        {/* Déverrouiller jour */}
                                         {dayLocked && (
                                             <button
                                                 type="button"
