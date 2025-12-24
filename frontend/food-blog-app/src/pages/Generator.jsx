@@ -17,6 +17,12 @@ const clampInt = (value, min, max, fallback) => {
     return Math.min(Math.max(n, min), max);
 };
 
+const clampNumber = (value, min, max, fallback) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(Math.max(n, min), max);
+};
+
 const buildExcludeParam = (ids) => ids.filter(Boolean).join(",");
 
 const HIDDEN_ON_GENERATOR = new Set(["boisson", "sauce"]);
@@ -24,16 +30,20 @@ const HIDDEN_ON_GENERATOR = new Set(["boisson", "sauce"]);
 const DAILY_CATEGORIES = new Set(["apero", "entree", "plat", "dessert"]);
 const DAILY_ORDER = ["apero", "entree", "plat", "dessert"];
 
-function SectionTitle({ icon, children }) {
+function SectionTitle({ icon, children, right }) {
     return (
         <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
-          {icon}
-        </span>
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-zinc-200 text-primary text-sm">
+                    {icon}
+                </span>
                 <h4 className="text-base font-bold tracking-tight text-zinc-900">
                     {children}
                 </h4>
+            </div>
+            <div className="flex items-center gap-2">
+                {right}
+                <div className="h-px w-10 bg-transparent" />
             </div>
             <div className="h-px flex-1 ml-3 bg-zinc-200/80" />
         </div>
@@ -137,12 +147,30 @@ const formatDayLabelForCard = ({ dateISO, todayISO }) => {
     return capitalizeFirst(fmt.format(date));
 };
 
-const normalizeEnabledMeals = (m) => {
-    const base = m && typeof m === "object" ? m : {};
-    const em = base.enabledMeals && typeof base.enabledMeals === "object" ? base.enabledMeals : {};
+/** ---------- Servings helpers ---------- */
+/**
+ * On conserve `recipe.servings` (valeur “base” venant de l’API),
+ * et on stocke le choix utilisateur dans `recipe.selectedServings`.
+ * ShoppingList.jsx calcule ensuite: multiplier = selectedServings / servings.
+ */
+const normalizeRecipeSelectedServings = (recipe) => {
+    if (!recipe || typeof recipe !== "object") return recipe;
+
+    const base =
+        Number.isFinite(Number(recipe.servings)) && Number(recipe.servings) > 0
+            ? Number(recipe.servings)
+            : 1;
+
+    const selected =
+        Number.isFinite(Number(recipe.selectedServings)) && Number(recipe.selectedServings) > 0
+            ? Number(recipe.selectedServings)
+            : base;
+
+    if (recipe.selectedServings === selected) return recipe;
+
     return {
-        lunch: em.lunch !== false,  // default true
-        dinner: em.dinner !== false // default true
+        ...recipe,
+        selectedServings: selected,
     };
 };
 
@@ -155,6 +183,8 @@ export default function Generator() {
 
     /**
      * ✅ Date de départ (datepicker)
+     * - défaut : aujourd'hui
+     * - persistée en localStorage
      */
     const [startDate, setStartDate] = useState(() => {
         const saved = safeGetLS(LS_START_DATE);
@@ -162,6 +192,9 @@ export default function Generator() {
         return toLocalISODate(new Date());
     });
 
+    /**
+     * ✅ Hydratation synchronisée dès le 1er rendu
+     */
     const [days, setDays] = useState(() => {
         const saved = safeGetLS(LS_DAYS);
         return saved ? clampInt(saved, 1, 14, 7) : 7;
@@ -184,25 +217,8 @@ export default function Generator() {
         if (!saved) return [];
 
         const parsed = safeJsonParse(saved);
-
-        if (Array.isArray(parsed)) {
-            // ✅ assure enabledMeals sur les menus existants
-            return parsed.map((m, idx) => ({
-                ...m,
-                dayIndex: m?.dayIndex ?? idx,
-                enabledMeals: normalizeEnabledMeals(m),
-            }));
-        }
-
-        if (parsed && typeof parsed === "object") {
-            return [
-                {
-                    ...parsed,
-                    dayIndex: parsed?.dayIndex ?? 0,
-                    enabledMeals: normalizeEnabledMeals(parsed),
-                },
-            ];
-        }
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed && typeof parsed === "object") return [parsed];
 
         return [];
     });
@@ -283,37 +299,6 @@ export default function Generator() {
         return [...ordered, ...remaining];
     }, [safeDailyCats]);
 
-    /** ---------- Helpers: get/set recipe at slot ---------- */
-    const getRecipeAt = useCallback(
-        ({ dayIndex, meal, categoryKey }) => {
-            const m = menus?.[dayIndex];
-            if (!m) return null;
-            if (meal === "brunch") return m?.brunch ?? null;
-            return m?.[meal]?.[categoryKey] ?? null;
-        },
-        [menus]
-    );
-
-    const setRecipeAt = useCallback(({ dayIndex, meal, categoryKey, recipe }) => {
-        setMenus((prev) => {
-            const next = Array.isArray(prev) ? [...prev] : [];
-            const baseDay = next[dayIndex] ?? null;
-            if (!baseDay) return prev;
-
-            const updated = { ...baseDay };
-
-            if (meal === "brunch") {
-                updated.brunch = recipe;
-            } else {
-                updated[meal] = { ...(updated[meal] || {}) };
-                updated[meal][categoryKey] = recipe;
-            }
-
-            next[dayIndex] = updated;
-            return next;
-        });
-    }, []);
-
     /** ---------- Locks ---------- */
     const isDayLocked = useCallback(
         (dayIndex) => !!lockedDays?.[dayIndex],
@@ -352,37 +337,137 @@ export default function Generator() {
         setLockedDays({});
     }, []);
 
-    /** ---------- Meal enable/disable per day ---------- */
-    const toggleMealEnabled = useCallback((dayIndex, meal) => {
-        if (meal !== "lunch" && meal !== "dinner") return;
+    /** ---------- Per-day meal enable (midi/soir) ---------- */
+    const setMealEnabled = useCallback(
+        ({ dayIndex, mealKey, enabled }) => {
+            setMenus((prev) => {
+                if (!Array.isArray(prev)) return prev;
+                const next = [...prev];
+                const day = next[dayIndex];
+                if (!day) return prev;
 
-        setMenus((prev) => {
-            if (!Array.isArray(prev)) return prev;
-            return prev.map((m, idx) => {
-                const di = m?.dayIndex ?? idx;
-                if (di !== dayIndex) return m;
+                const enabledMeals = {
+                    lunch: true,
+                    dinner: true,
+                    ...(day.enabledMeals || {}),
+                    [mealKey]: !!enabled,
+                };
 
-                const enabledMeals = normalizeEnabledMeals(m);
-                const nextEnabledMeals = { ...enabledMeals, [meal]: !enabledMeals[meal] };
+                const updated = { ...day, enabledMeals };
 
-                // Option: si on désactive, on ne “casse” rien : on garde les recettes,
-                // mais elles ne seront plus affichées ni générées.
-                return { ...m, enabledMeals: nextEnabledMeals };
+                if (!enabled) {
+                    updated[mealKey] = undefined;
+                } else {
+                    if (!updated[mealKey] || typeof updated[mealKey] !== "object") {
+                        updated[mealKey] = {};
+                        for (const c of safeDailyCats) updated[mealKey][c] = null;
+                    }
+                }
+
+                next[dayIndex] = updated;
+                return next;
             });
-        });
+
+            if (!enabled) {
+                setLockedSlots((prev) => {
+                    const next = { ...(prev || {}) };
+                    for (const k of Object.keys(next)) {
+                        const parsed = parseSlotKey(k);
+                        if (parsed.dayIndex === dayIndex && parsed.meal === mealKey) {
+                            delete next[k];
+                        }
+                    }
+                    return next;
+                });
+            }
+        },
+        [safeDailyCats]
+    );
+
+    /** ---------- Random fetch ---------- */
+    const fetchRandomRecipes = useCallback(async ({ count, excludeIds = [], category }) => {
+        const params = new URLSearchParams();
+        params.set("count", String(count));
+        params.set("category", String(category || "plat"));
+        if (excludeIds.length > 0) params.set("exclude", buildExcludeParam(excludeIds));
+
+        const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
+        const res = await axios.get(url);
+        const arr = Array.isArray(res.data) ? res.data : [];
+        return arr.map((r) => normalizeRecipeSelectedServings(r));
     }, []);
 
-    /** ---------- Current ids (for avoiding duplicates) ---------- */
+    /** ---------- Build day skeleton ---------- */
+    const buildEmptyMenuDay = useCallback(
+        (dayIndex, existingDay) => {
+            const enabledMeals = {
+                lunch: true,
+                dinner: true,
+                ...(existingDay?.enabledMeals || {}),
+            };
+
+            const makeMealObj = () => {
+                const obj = {};
+                for (const c of safeDailyCats) obj[c] = null;
+                return obj;
+            };
+
+            return {
+                dayIndex,
+                date: addDaysISO(startDate, dayIndex),
+                enabledMeals,
+                brunch: hasBrunch ? null : undefined,
+                lunch: enabledMeals.lunch ? makeMealObj() : undefined,
+                dinner: enabledMeals.dinner ? makeMealObj() : undefined,
+            };
+        },
+        [hasBrunch, safeDailyCats, startDate]
+    );
+
+    /**
+     * ✅ Rétro-compat + normalisation selectedServings + update dates quand startDate change
+     */
+    useEffect(() => {
+        setMenus((prev) => {
+            if (!Array.isArray(prev) || prev.length === 0) return prev;
+
+            return prev.map((m, idx) => {
+                const enabledMeals = {
+                    lunch: true,
+                    dinner: true,
+                    ...(m?.enabledMeals || {}),
+                };
+
+                const normMeal = (mealObj) => {
+                    if (!mealObj || typeof mealObj !== "object") return mealObj;
+                    const out = { ...mealObj };
+                    for (const k of Object.keys(out)) {
+                        out[k] = normalizeRecipeSelectedServings(out[k]);
+                    }
+                    return out;
+                };
+
+                return {
+                    ...m,
+                    dayIndex: m?.dayIndex ?? idx,
+                    date: addDaysISO(startDate, idx),
+                    enabledMeals,
+                    brunch: normalizeRecipeSelectedServings(m?.brunch),
+                    lunch: enabledMeals.lunch ? normMeal(m?.lunch || {}) : undefined,
+                    dinner: enabledMeals.dinner ? normMeal(m?.dinner || {}) : undefined,
+                };
+            });
+        });
+    }, [startDate]);
+
+    /** ---------- Current ids (avoid duplicates) ---------- */
     const currentRecipeIds = useMemo(() => {
         const ids = [];
-
         for (const m of menus) {
-            const enabledMeals = normalizeEnabledMeals(m);
-
             if (m?.brunch?._id) ids.push(m.brunch._id);
 
-            const lunchObj = enabledMeals.lunch ? (m?.lunch || {}) : {};
-            const dinnerObj = enabledMeals.dinner ? (m?.dinner || {}) : {};
+            const lunchObj = m?.lunch || {};
+            const dinnerObj = m?.dinner || {};
 
             for (const key of Object.keys(lunchObj)) {
                 if (lunchObj[key]?._id) ids.push(lunchObj[key]._id);
@@ -391,7 +476,6 @@ export default function Generator() {
                 if (dinnerObj[key]?._id) ids.push(dinnerObj[key]._id);
             }
         }
-
         return ids;
     }, [menus]);
 
@@ -405,67 +489,11 @@ export default function Generator() {
         });
     }, []);
 
-    const fetchRandomRecipes = useCallback(
-        async ({ count, excludeIds = [], category }) => {
-            const params = new URLSearchParams();
-            params.set("count", String(count));
-            params.set("category", String(category || "plat"));
-            if (excludeIds.length > 0)
-                params.set("exclude", buildExcludeParam(excludeIds));
-
-            const url = `${API_BASE_URL}/recipe/random?${params.toString()}`;
-            const res = await axios.get(url);
-            return Array.isArray(res.data) ? res.data : [];
-        },
-        []
-    );
-
-    const buildEmptyMenuDay = useCallback(
-        (dayIndex, existingDay) => {
-            const enabledMeals = normalizeEnabledMeals(existingDay);
-
-            const lunch = {};
-            const dinner = {};
-
-            for (const c of safeDailyCats) {
-                lunch[c] = null;
-                dinner[c] = null;
-            }
-
-            return {
-                dayIndex,
-                date: addDaysISO(startDate, dayIndex),
-                enabledMeals, // ✅ midi/soir activables par jour
-                brunch: hasBrunch ? null : undefined,
-                lunch,
-                dinner,
-            };
-        },
-        [hasBrunch, safeDailyCats, startDate]
-    );
-
-    /**
-     * Si l'utilisateur change la date de départ :
-     * - on met à jour la propriété `date` de chaque jour existant
-     * - sans toucher aux recettes/verrous
-     */
-    useEffect(() => {
-        setMenus((prev) => {
-            if (!Array.isArray(prev) || prev.length === 0) return prev;
-            return prev.map((m, idx) => ({
-                ...m,
-                dayIndex: m?.dayIndex ?? idx,
-                date: addDaysISO(startDate, idx),
-                enabledMeals: normalizeEnabledMeals(m),
-            }));
-        });
-    }, [startDate]);
-
     /**
      * Génération “intelligente” :
      * - garde ce qui est verrouillé (slot ou journée)
      * - remplit uniquement ce qui est déverrouillé
-     * - ✅ ne remplit que les repas activés (midi/soir)
+     * - respecte enabledMeals (midi/soir)
      */
     const generateMenus = useCallback(async () => {
         setLoading(true);
@@ -474,65 +502,62 @@ export default function Generator() {
         try {
             const base = Array.from({ length: d }, (_, dayIndex) => {
                 const existing = menus?.[dayIndex];
-                const empty = buildEmptyMenuDay(dayIndex, existing);
-
-                if (!existing) return empty;
-
                 const rebuilt = buildEmptyMenuDay(dayIndex, existing);
 
-                const enabledMeals = normalizeEnabledMeals(existing);
-                rebuilt.enabledMeals = enabledMeals;
+                if (!existing) return rebuilt;
 
+                // brunch
                 if (hasBrunch) {
                     const brunchLocked = isSlotLocked({
                         dayIndex,
                         meal: "brunch",
                         categoryKey: "brunch",
                     });
-                    rebuilt.brunch = brunchLocked ? existing?.brunch ?? null : null;
+
+                    rebuilt.brunch = brunchLocked
+                        ? normalizeRecipeSelectedServings(existing?.brunch ?? null)
+                        : null;
                 }
 
+                // lunch/dinner (si activés)
                 for (const cat of safeDailyCats) {
-                    if (enabledMeals.lunch) {
+                    if (rebuilt.lunch) {
                         const lunchLocked = isSlotLocked({
                             dayIndex,
                             meal: "lunch",
                             categoryKey: cat,
                         });
-                        rebuilt.lunch[cat] = lunchLocked ? existing?.lunch?.[cat] ?? null : null;
-                    } else {
-                        rebuilt.lunch[cat] = existing?.lunch?.[cat] ?? null; // conservé, mais non généré
+                        rebuilt.lunch[cat] = lunchLocked
+                            ? normalizeRecipeSelectedServings(existing?.lunch?.[cat] ?? null)
+                            : null;
                     }
 
-                    if (enabledMeals.dinner) {
+                    if (rebuilt.dinner) {
                         const dinnerLocked = isSlotLocked({
                             dayIndex,
                             meal: "dinner",
                             categoryKey: cat,
                         });
-                        rebuilt.dinner[cat] = dinnerLocked ? existing?.dinner?.[cat] ?? null : null;
-                    } else {
-                        rebuilt.dinner[cat] = existing?.dinner?.[cat] ?? null; // conservé, mais non généré
+                        rebuilt.dinner[cat] = dinnerLocked
+                            ? normalizeRecipeSelectedServings(existing?.dinner?.[cat] ?? null)
+                            : null;
                     }
                 }
 
                 return rebuilt;
             });
 
-            // ids déjà pris (verrouillés conservés) + seulement repas activés
+            // ids déjà pris (verrouillés conservés)
             let exclude = [];
             for (const day of base) {
-                const enabledMeals = normalizeEnabledMeals(day);
-
                 if (day?.brunch?._id) exclude.push(day.brunch._id);
-
                 for (const cat of safeDailyCats) {
-                    if (enabledMeals.lunch && day?.lunch?.[cat]?._id) exclude.push(day.lunch[cat]._id);
-                    if (enabledMeals.dinner && day?.dinner?.[cat]?._id) exclude.push(day.dinner[cat]._id);
+                    if (day?.lunch?.[cat]?._id) exclude.push(day.lunch[cat]._id);
+                    if (day?.dinner?.[cat]?._id) exclude.push(day.dinner[cat]._id);
                 }
             }
 
-            // brunch : inchangé
+            // brunch : on remplit uniquement les jours où brunch est null
             if (hasBrunch) {
                 const targets = [];
                 for (let i = 0; i < d; i++) {
@@ -578,18 +603,14 @@ export default function Generator() {
                 }
             }
 
-            // lunch/dinner par catégorie : ✅ uniquement pour les repas activés
+            // lunch/dinner par catégorie (respecte enabledMeals)
             for (const cat of safeDailyCats) {
                 const targets = []; // {dayIndex, meal}
                 for (let i = 0; i < d; i++) {
-                    const enabledMeals = normalizeEnabledMeals(base[i]);
-
-                    if (enabledMeals.lunch && base[i].lunch?.[cat] == null) {
+                    if (base[i].lunch && base[i].lunch?.[cat] == null)
                         targets.push({ dayIndex: i, meal: "lunch" });
-                    }
-                    if (enabledMeals.dinner && base[i].dinner?.[cat] == null) {
+                    if (base[i].dinner && base[i].dinner?.[cat] == null)
                         targets.push({ dayIndex: i, meal: "dinner" });
-                    }
                 }
 
                 if (targets.length === 0) continue;
@@ -623,6 +644,7 @@ export default function Generator() {
 
                 targets.forEach((t, idx) => {
                     const r = picked[idx] ?? null;
+                    if (!base[t.dayIndex][t.meal]) return;
                     base[t.dayIndex][t.meal][cat] = r;
                 });
 
@@ -651,18 +673,7 @@ export default function Generator() {
 
     const regenerateOne = useCallback(
         async ({ dayIndex, meal, categoryKey }) => {
-            // ✅ si le repas est désactivé, on ne fait rien
-            if (meal === "lunch" || meal === "dinner") {
-                const enabledMeals = normalizeEnabledMeals(menus?.[dayIndex]);
-                if ((meal === "lunch" && !enabledMeals.lunch) || (meal === "dinner" && !enabledMeals.dinner)) {
-                    return;
-                }
-            }
-
-            // si verrouillé (slot ou jour), on ne fait rien
-            if (isSlotLocked({ dayIndex, meal, categoryKey: categoryKey ?? meal })) {
-                return;
-            }
+            if (isSlotLocked({ dayIndex, meal, categoryKey: categoryKey ?? meal })) return;
 
             setLoading(true);
             setError("");
@@ -674,7 +685,6 @@ export default function Generator() {
                         : menus?.[dayIndex]?.[meal]?.[categoryKey];
 
                 const currentId = current?._id;
-
                 const exclude = currentRecipeIds.filter((id) => id && id !== currentId);
 
                 const firstTry = await fetchRandomRecipes({
@@ -699,14 +709,17 @@ export default function Generator() {
                         if (m.dayIndex !== dayIndex) return m;
 
                         if (meal === "brunch") {
-                            return { ...m, brunch: replacement };
+                            return { ...m, brunch: normalizeRecipeSelectedServings(replacement) };
                         }
+
+                        // si le repas est désactivé, on ne touche pas
+                        if (!m?.[meal]) return m;
 
                         return {
                             ...m,
                             [meal]: {
                                 ...(m[meal] || {}),
-                                [categoryKey]: replacement,
+                                [categoryKey]: normalizeRecipeSelectedServings(replacement),
                             },
                         };
                     })
@@ -774,15 +787,66 @@ export default function Generator() {
         return capitalizeFirst(fmt.format(fromISOToLocalDate(startDate)));
     }, [startDate, todayISO]);
 
+    /** ---------- Servings controls (±) : écrit dans selectedServings ---------- */
+    const setSelectedServingsForSlot = useCallback(
+        ({ dayIndex, meal, categoryKey, nextServings }) => {
+            setMenus((prev) => {
+                if (!Array.isArray(prev)) return prev;
+                const next = [...prev];
+                const day = next[dayIndex];
+                if (!day) return prev;
+
+                const clampWithBase = (recipe, n) => {
+                    const base =
+                        Number.isFinite(Number(recipe?.servings)) && Number(recipe.servings) > 0
+                            ? Number(recipe.servings)
+                            : 1;
+                    return clampNumber(n, 1, 99, base);
+                };
+
+                if (meal === "brunch") {
+                    if (!day.brunch) return prev;
+                    const baseRecipe = normalizeRecipeSelectedServings(day.brunch);
+                    const updated = {
+                        ...baseRecipe,
+                        selectedServings: clampWithBase(baseRecipe, nextServings),
+                    };
+                    next[dayIndex] = { ...day, brunch: updated };
+                    return next;
+                }
+
+                if (!day?.[meal] || !categoryKey) return prev;
+                const current = day[meal][categoryKey];
+                if (!current) return prev;
+
+                const baseRecipe = normalizeRecipeSelectedServings(current);
+                const updated = {
+                    ...baseRecipe,
+                    selectedServings: clampWithBase(baseRecipe, nextServings),
+                };
+
+                next[dayIndex] = {
+                    ...day,
+                    [meal]: {
+                        ...(day[meal] || {}),
+                        [categoryKey]: updated,
+                    },
+                };
+                return next;
+            });
+        },
+        []
+    );
+
     return (
         <section className="container py-8">
             <div className="flex flex-col gap-6">
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4">
                     <h2 className="mb-8">
-            <span className="relative inline-block">
-              Mes recettes
-              <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
-            </span>
+                        <span className="relative inline-block">
+                            Mes recettes
+                            <span className="absolute left-0 -bottom-1 h-1 w-40 bg-primary/20 rounded-full" />
+                        </span>
                     </h2>
                     <p className="mt-1 text-sm text-zinc-600">
                         Génère tes menus, verrouille des recettes, et reviens plus tard sans rien perdre.
@@ -821,7 +885,9 @@ export default function Generator() {
                                     value={days}
                                     onChange={(e) => setDays(clampInt(e.target.value, 1, 14, 7))}
                                 />
-                                <div className="text-xs text-zinc-500">{d * 2} repas (midi+soir)</div>
+                                <div className="text-xs text-zinc-500">
+                                    {d * 2} repas (midi+soir)
+                                </div>
                             </label>
 
                             <div className="space-y-2 sm:col-span-1 lg:col-span-2">
@@ -896,7 +962,8 @@ export default function Generator() {
                         const dateISO = menu?.date ?? addDaysISO(startDate, idx);
                         const dayTitle = formatDayLabelForCard({ dateISO, todayISO });
 
-                        const enabledMeals = normalizeEnabledMeals(menu);
+                        const lunchEnabled = menu?.enabledMeals?.lunch !== false;
+                        const dinnerEnabled = menu?.enabledMeals?.dinner !== false;
 
                         return (
                             <div
@@ -904,34 +971,7 @@ export default function Generator() {
                                 className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 p-4"
                             >
                                 <div className="flex items-center justify-between mb-3 gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-primary font-extrabold">
-                                            {dayTitle}
-                                        </h3>
-
-                                        {/* ✅ Choix Midi / Soir (par jour) */}
-                                        <div className="flex items-center gap-3">
-                                            <label>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={enabledMeals.lunch}
-                                                    onChange={() => toggleMealEnabled(menu.dayIndex, "lunch")}
-                                                    disabled={loading}
-                                                />{" "}
-                                                Midi
-                                            </label>
-
-                                            <label>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={enabledMeals.dinner}
-                                                    onChange={() => toggleMealEnabled(menu.dayIndex, "dinner")}
-                                                    disabled={loading}
-                                                />{" "}
-                                                Soir
-                                            </label>
-                                        </div>
-                                    </div>
+                                    <h3 className="text-primary font-extrabold">{dayTitle}</h3>
 
                                     <div className="flex items-center gap-2">
                                         {/* ✅ Un seul bouton icône pour lock/unlock journée */}
@@ -959,6 +999,39 @@ export default function Generator() {
                                     </div>
                                 </div>
 
+                                {/* ✅ Choix Midi/Soir */}
+                                <div className="mb-4 flex items-center gap-4">
+                                    <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!lunchEnabled}
+                                            onChange={(e) =>
+                                                setMealEnabled({
+                                                    dayIndex: menu.dayIndex,
+                                                    mealKey: "lunch",
+                                                    enabled: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                        Midi
+                                    </label>
+
+                                    <label className="inline-flex items-center gap-2 text-sm text-zinc-700">
+                                        <input
+                                            type="checkbox"
+                                            checked={!!dinnerEnabled}
+                                            onChange={(e) =>
+                                                setMealEnabled({
+                                                    dayIndex: menu.dayIndex,
+                                                    mealKey: "dinner",
+                                                    enabled: e.target.checked,
+                                                })
+                                            }
+                                        />
+                                        Soir
+                                    </label>
+                                </div>
+
                                 {hasBrunch && (
                                     <div className="mb-4">
                                         <SectionTitle icon="☕">Brunch</SectionTitle>
@@ -984,12 +1057,21 @@ export default function Generator() {
                                                         meal: "brunch",
                                                     })
                                                 }
+                                                onServingsChange={(next) =>
+                                                    setSelectedServingsForSlot({
+                                                        dayIndex: menu.dayIndex,
+                                                        meal: "brunch",
+                                                        categoryKey: "brunch",
+                                                        nextServings: next,
+                                                    })
+                                                }
                                             />
                                         </div>
                                     </div>
                                 )}
 
-                                {enabledMeals.lunch && (
+                                {/* MIDI */}
+                                {lunchEnabled && (
                                     <div className="mb-4">
                                         <SectionTitle icon="🍽️">Midi</SectionTitle>
                                         <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
@@ -1018,13 +1100,22 @@ export default function Generator() {
                                                             categoryKey: cat,
                                                         })
                                                     }
+                                                    onServingsChange={(next) =>
+                                                        setSelectedServingsForSlot({
+                                                            dayIndex: menu.dayIndex,
+                                                            meal: "lunch",
+                                                            categoryKey: cat,
+                                                            nextServings: next,
+                                                        })
+                                                    }
                                                 />
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {enabledMeals.dinner && (
+                                {/* SOIR */}
+                                {dinnerEnabled && (
                                     <div>
                                         <SectionTitle icon="🌙">Soir</SectionTitle>
                                         <div className="rounded-xl ring-1 ring-zinc-200 overflow-hidden divide-y divide-zinc-200">
@@ -1051,6 +1142,14 @@ export default function Generator() {
                                                             dayIndex: menu.dayIndex,
                                                             meal: "dinner",
                                                             categoryKey: cat,
+                                                        })
+                                                    }
+                                                    onServingsChange={(next) =>
+                                                        setSelectedServingsForSlot({
+                                                            dayIndex: menu.dayIndex,
+                                                            meal: "dinner",
+                                                            categoryKey: cat,
+                                                            nextServings: next,
                                                         })
                                                     }
                                                 />

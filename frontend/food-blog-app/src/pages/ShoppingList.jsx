@@ -53,7 +53,7 @@ const UNIT_ALIASES = new Map([
     ["pc", "pc"],
     ["pce", "pc"],
 
-    ["c", "c"], // ex "1 c sucre" (ambigu mais on garde)
+    ["c", "c"],
     ["cas", "càs"],
     ["càs", "càs"],
     ["cuillere a soupe", "càs"],
@@ -82,44 +82,29 @@ const UNIT_ALIASES = new Map([
 const normalizeUnit = (rawUnit) => {
     const u = cleanSpaces(stripDiacritics(String(rawUnit ?? "").toLowerCase()));
     if (!u) return "";
-
-    // enlever ponctuation simple
     const cleaned = u.replace(/[().]/g, "");
-
     return UNIT_ALIASES.get(cleaned) ?? cleaned;
 };
 
 const singularizeFr = (word) => {
-    // simple heuristique (on évite de casser "riz", "maïs", etc.)
     const w = String(word);
     if (w.length <= 3) return w;
-
-    // oeufs -> oeuf
     if (w.endsWith("oeufs")) return w.slice(0, -1);
-
-    // plural s/x (très simple)
     if (w.endsWith("s") && !w.endsWith("us") && !w.endsWith("is")) return w.slice(0, -1);
     if (w.endsWith("x") && !w.endsWith("eaux")) return w.slice(0, -1);
-
     return w;
 };
 
 const normalizeLabelKey = (label) => {
-    // but: clé stable pour regrouper
     let s = cleanSpaces(String(label ?? "").toLowerCase());
     s = stripDiacritics(s);
 
-    // enlever débuts type "de", "du", "des", "d'", "la", "le", etc. (sans être agressif)
     s = s
         .replace(/^(de|du|des|d')\s+/i, "")
         .replace(/^(la|le|les|un|une)\s+/i, "");
-
-    // retirer certains mots "de" au milieu (optionnel mais aide: "tranches de pain" = "tranches pain")
     s = s.replace(/\s+(de|du|des|d')\s+/gi, " ");
-
     s = cleanSpaces(s);
 
-    // singularisation mot par mot (léger)
     const parts = s.split(" ").map((p) => singularizeFr(p));
     return cleanSpaces(parts.join(" "));
 };
@@ -130,7 +115,6 @@ const parseIngredientLine = (line) => {
     const raw = cleanSpaces(line);
     if (!raw) return null;
 
-    // 1) extraire qty au début
     const mQty = raw.match(/^(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+)\s*(.*)$/);
     if (!mQty) return { qty: null, unit: "", label: raw, rawLabel: raw };
 
@@ -140,7 +124,6 @@ const parseIngredientLine = (line) => {
     let rest = cleanSpaces(mQty[2] ?? "");
     if (!rest) return { qty: null, unit: "", label: raw, rawLabel: raw };
 
-    // 3) extraire une unité si le 1er token ressemble à une unité
     const tokens = rest.split(" ");
     const first = tokens[0] ?? "";
     const unitNorm = normalizeUnit(first);
@@ -174,17 +157,16 @@ const formatQty = (n) => {
     return String(rounded).replace(".", ",");
 };
 
-/**
- * ✅ Respecte le choix Midi/Soir par jour (enabledMeals)
- * - Par défaut: true/true si absent (compat legacy)
- */
-const normalizeEnabledMeals = (day) => {
-    const base = day && typeof day === "object" ? day : {};
-    const em = base.enabledMeals && typeof base.enabledMeals === "object" ? base.enabledMeals : {};
-    return {
-        lunch: em.lunch !== false,
-        dinner: em.dinner !== false,
-    };
+const getRecipeMultiplier = (recipe) => {
+    if (!recipe) return 1;
+
+    const base = Number.isFinite(recipe.servings) && recipe.servings > 0 ? recipe.servings : 1;
+    const selected =
+        Number.isFinite(recipe.selectedServings) && recipe.selectedServings > 0
+            ? recipe.selectedServings
+            : base;
+
+    return selected / base;
 };
 
 export default function ShoppingList() {
@@ -196,12 +178,10 @@ export default function ShoppingList() {
     const menus = location?.state?.menus ?? [];
 
     const result = useMemo(() => {
-        // key -> { labelPretty, qty, unit }
-        const totals = new Map();
-        // key -> labelPretty
-        const singles = new Map();
+        const totals = new Map(); // key -> { labelPretty, qty, unit }
+        const singles = new Map(); // key -> labelPretty
 
-        const pushLine = (line) => {
+        const pushLine = (line, multiplier = 1) => {
             const parsed = parseIngredientLine(line);
             if (!parsed) return;
 
@@ -216,13 +196,19 @@ export default function ShoppingList() {
                 return;
             }
 
+            const scaledQty = parsed.qty * (Number.isFinite(multiplier) ? multiplier : 1);
+
             const prev = totals.get(key);
             if (!prev) {
-                totals.set(key, { labelPretty: parsed.label, qty: parsed.qty, unit: parsed.unit });
+                totals.set(key, {
+                    labelPretty: parsed.label,
+                    qty: scaledQty,
+                    unit: parsed.unit,
+                });
             } else {
                 totals.set(key, {
                     ...prev,
-                    qty: prev.qty + parsed.qty,
+                    qty: prev.qty + scaledQty,
                 });
             }
         };
@@ -230,36 +216,24 @@ export default function ShoppingList() {
         for (const day of menus) {
             if (!day) continue;
 
-            const enabledMeals = normalizeEnabledMeals(day);
-
-            // brunch (toujours inclus si présent)
+            // brunch
             if (day.brunch?.ingredients) {
-                for (const ing of day.brunch.ingredients) pushLine(ing);
+                const mult = getRecipeMultiplier(day.brunch);
+                for (const ing of day.brunch.ingredients) pushLine(ing, mult);
             }
 
-            // ✅ lunch seulement si activé
-            if (enabledMeals.lunch) {
-                const meal = day?.lunch;
-                if (meal) {
-                    for (const catKey of Object.keys(meal)) {
-                        const recipe = meal[catKey];
-                        const ingredients = recipe?.ingredients;
-                        if (!Array.isArray(ingredients)) continue;
-                        for (const ing of ingredients) pushLine(ing);
-                    }
-                }
-            }
+            // lunch/dinner
+            for (const mealKey of ["lunch", "dinner"]) {
+                const meal = day?.[mealKey];
+                if (!meal) continue;
 
-            // ✅ dinner seulement si activé
-            if (enabledMeals.dinner) {
-                const meal = day?.dinner;
-                if (meal) {
-                    for (const catKey of Object.keys(meal)) {
-                        const recipe = meal[catKey];
-                        const ingredients = recipe?.ingredients;
-                        if (!Array.isArray(ingredients)) continue;
-                        for (const ing of ingredients) pushLine(ing);
-                    }
+                for (const catKey of Object.keys(meal)) {
+                    const recipe = meal[catKey];
+                    const ingredients = recipe?.ingredients;
+                    if (!Array.isArray(ingredients)) continue;
+
+                    const mult = getRecipeMultiplier(recipe);
+                    for (const ing of ingredients) pushLine(ing, mult);
                 }
             }
         }
@@ -277,7 +251,6 @@ export default function ShoppingList() {
         }
 
         items.sort((a, b) => a.localeCompare(b, "fr"));
-
         return items;
     }, [menus]);
 
