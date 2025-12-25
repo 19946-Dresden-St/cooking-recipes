@@ -169,7 +169,7 @@ export default function Navbar() {
                                 onClick={() => setIsMenuOpen(false)}
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
-                                Générateur
+                                Mon menu
                             </NavLink>
 
                             <NavLink
@@ -185,7 +185,7 @@ export default function Navbar() {
                                 onClick={openLoginIfNeeded}
                                 className={({ isActive }) => (isActive ? "nav-item-active" : "nav-item")}
                             >
-                                Mes Favoris
+                                Mes favoris
                             </NavLink>
 
                             <button
