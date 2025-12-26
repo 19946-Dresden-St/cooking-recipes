@@ -9,7 +9,7 @@ import EditRecipe from "./pages/EditRecipe.jsx";
 import RecipeDetails from "./pages/RecipeDetails.jsx";
 import MyRecipes from "./pages/MyRecipes.jsx";
 import FavRecipes from "./pages/FavRecipes.jsx";
-import Generator from "./pages/Generator.jsx";
+import Generator from "./pages/generator"
 import ShoppingList from "./pages/ShoppingList.jsx";
 
 const getAllRecipes = async () => {
