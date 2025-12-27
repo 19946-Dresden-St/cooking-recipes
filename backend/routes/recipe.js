@@ -19,7 +19,13 @@ router.get("/random", asyncHandler(getRandomRecipes));
 router.get("/:id", validateObjectId("id"), asyncHandler(getRecipe));
 
 router.post("/", verifyToken, uploadRecipeImage.single("file"), asyncHandler(addRecipe));
-router.put("/:id", verifyToken, validateObjectId("id"), uploadRecipeImage.single("file"), asyncHandler(editRecipe));
+router.put(
+    "/:id",
+    verifyToken,
+    validateObjectId("id"),
+    uploadRecipeImage.single("file"),
+    asyncHandler(editRecipe)
+);
 router.delete("/:id", verifyToken, validateObjectId("id"), asyncHandler(deleteRecipe));
 
 module.exports = router;

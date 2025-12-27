@@ -5,7 +5,6 @@ const Recipe = require("./models/recipe");
 const { normalizeUsername, escapeRegex } = require("./utils/username");
 
 async function buildAdminRouter() {
-
     const AdminJSImport = await import("adminjs");
     const AdminJS = AdminJSImport.default || AdminJSImport;
 
@@ -15,8 +14,10 @@ async function buildAdminRouter() {
     const AdminJSMongooseImport = await import("@adminjs/mongoose");
     const AdminJSMongoose = AdminJSMongooseImport.default || AdminJSMongooseImport;
 
-    const Database = AdminJSMongoose.Database || (AdminJSMongoose.default && AdminJSMongoose.default.Database);
-    const Resource = AdminJSMongoose.Resource || (AdminJSMongoose.default && AdminJSMongoose.default.Resource);
+    const Database =
+        AdminJSMongoose.Database || (AdminJSMongoose.default && AdminJSMongoose.default.Database);
+    const Resource =
+        AdminJSMongoose.Resource || (AdminJSMongoose.default && AdminJSMongoose.default.Resource);
 
     AdminJS.registerAdapter({
         Database,

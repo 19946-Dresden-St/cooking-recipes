@@ -14,7 +14,6 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
     try {
-
         await connectDb();
 
         app.use(express.json());
@@ -48,8 +47,8 @@ async function start() {
             server.close(async () => {
                 try {
                     await mongoose.connection.close();
-                } catch (e) {
-
+                } catch (err) {
+                    console.error("❌ Error closing MongoDB connection:", err);
                 }
                 process.exit(0);
             });

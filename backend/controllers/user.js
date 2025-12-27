@@ -1,8 +1,4 @@
-const {
-    registerUser,
-    authenticateUser,
-    getPublicUserById,
-} = require("../services/user.service");
+const { registerUser, authenticateUser, getPublicUserById } = require("../services/user.service");
 const httpError = require("../utils/httpError");
 
 /* ===== SIGN UP ===== */

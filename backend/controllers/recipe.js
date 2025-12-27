@@ -28,22 +28,25 @@ const getRandomRecipes = async (req, res) => {
     const count = Number.isFinite(countParsed) && countParsed > 0 ? Math.min(countParsed, 50) : 1;
 
     const categoryRaw = (req.query.category || "plat").toString().trim();
-    const categories = categoryRaw.split(",").map((s) => s.trim()).filter(Boolean);
+    const categories = categoryRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
 
     const excludeRaw = (req.query.exclude || "").toString().trim();
     const excludeIds = excludeRaw
         ? excludeRaw
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-            .map((id) => {
-                try {
-                    return new mongoose.Types.ObjectId(id);
-                } catch {
-                    return null;
-                }
-            })
-            .filter(Boolean)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((id) => {
+                  try {
+                      return new mongoose.Types.ObjectId(id);
+                  } catch {
+                      return null;
+                  }
+              })
+              .filter(Boolean)
         : [];
 
     const randomRecipes = await getRandomRecipesService({ count, categories, excludeIds });

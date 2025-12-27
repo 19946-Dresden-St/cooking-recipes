@@ -22,9 +22,7 @@ const findUserByUsername = async (username, { withPassword = false } = {}) => {
 };
 
 const isUsernameTaken = async (username) => {
-    const existing = await User.findOne({ username })
-        .collation(USERNAME_COLLATION)
-        .select("_id");
+    const existing = await User.findOne({ username }).collation(USERNAME_COLLATION).select("_id");
     return Boolean(existing);
 };
 

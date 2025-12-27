@@ -32,7 +32,7 @@ const verifyToken = async (req, res, next) => {
         };
 
         return next();
-    } catch (err) {
+    } catch {
         return next(httpError(401, "Invalid token"));
     }
 };

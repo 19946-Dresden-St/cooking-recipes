@@ -28,8 +28,8 @@ async function deleteRecipeImageIfNeeded(recipe) {
     if (recipe.coverImagePublicId) {
         try {
             await cloudinary.uploader.destroy(recipe.coverImagePublicId);
-        } catch (e) {
-            // on ne bloque pas la requête si Cloudinary refuse
+        } catch (err) {
+            console.warn("⚠️ Cloudinary destroy failed:", err);
         }
         return;
     }
