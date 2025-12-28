@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
+import { getApiErrorMessage } from "../utils/getApiErrorMessage.js";
 
 export default function InputForm({ setIsOpen }) {
     const [username, setUsername] = useState("");
@@ -17,18 +18,19 @@ export default function InputForm({ setIsOpen }) {
 
         const endpoint = isSignUp ? "signUp" : "login";
 
-        await axios
-            .post(`${API_BASE_URL}/${endpoint}`, { username, password })
-            .then((res) => {
-                localStorage.setItem("token", res.data.token);
-                localStorage.setItem("user", JSON.stringify(res.data.user));
+        try {
+            const res = await axios.post(`${API_BASE_URL}/${endpoint}`, { username, password });
 
-                // 🔔 resync dans le même onglet (Home/Navbar/…)
-                window.dispatchEvent(new Event("authChanged"));
+            localStorage.setItem("token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
 
-                setIsOpen();
-            })
-            .catch((data) => setError(data.response?.data?.error || "Erreur"));
+            // 🔔 resync dans le même onglet (Home/Navbar/…)
+            window.dispatchEvent(new Event("authChanged"));
+
+            setIsOpen();
+        } catch (err) {
+            setError(getApiErrorMessage(err));
+        }
     };
 
     return (

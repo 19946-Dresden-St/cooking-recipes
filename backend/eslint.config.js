@@ -1,4 +1,6 @@
+// eslint.config.js
 const globals = require("globals");
+const prettier = require("eslint-config-prettier");
 
 module.exports = [
     {
@@ -15,4 +17,5 @@ module.exports = [
             "no-console": "off",
         },
     },
+    prettier, // <= IMPORTANT : doit être à la fin
 ];

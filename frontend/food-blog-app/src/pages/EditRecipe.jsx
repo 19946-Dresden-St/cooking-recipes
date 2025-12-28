@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/getApiErrorMessage.js";
 
 export default function EditRecipe() {
     usePageTitle("Qu'est-ce qu'on mange ? | Modifier la recette");
@@ -53,19 +54,22 @@ export default function EditRecipe() {
             const response = await axios.get(`${API_BASE_URL}/recipe/${id}`);
             const res = response.data;
 
-            setRecipeData({
-                title: res.title ?? "",
-                category: res.category ?? "plat",
-                time: res.time ?? "",
-                servings: res.servings ?? 4,
-                // si API renvoie string, on fallback proprement en array
-                instructions: Array.isArray(res.instructions)
-                    ? res.instructions
-                    : typeof res.instructions === "string" && res.instructions.trim()
-                        ? [res.instructions]
-                        : [],
-                file: null,
-            });
+            try {
+                const response = await axios.get(`${API_BASE_URL}/recipe/${id}`);
+                const res = response.data;
+                setRecipeData({
+                    title: res.title ?? "",
+                    category: res.category ?? "plat",
+                    time: res.time ?? "",
+                    servings: res.servings ?? 4,
+                    // si API renvoie string, on fallback proprement en array
+                    instructions: Array.isArray(res.instructions)
+                        ? res.instructions
+                        : typeof res.instructions === "string" && res.instructions.trim()
+                            ? [res.instructions]
+                            : [],
+                    file: null,
+                });
 
             const existingIngredients = Array.isArray(res.ingredients) ? res.ingredients : [];
             setIngredientsCount(existingIngredients.length || 3);
@@ -78,6 +82,11 @@ export default function EditRecipe() {
                     : [];
             setInstructionsCount(existingInstructions.length || 3);
             generateInstructionInputs(existingInstructions.length || 1, existingInstructions);
+
+            } catch (err) {
+                toast.error(getApiErrorMessage(err));
+                navigate("/myRecipe");
+            }
         };
 
         getData();
@@ -169,10 +178,9 @@ export default function EditRecipe() {
             toast.success("Recette modifiée avec succès !", { id: toastId });
             navigate("/myRecipe");
         } catch (error) {
-            toast.error(
-                error?.response?.data?.message || "Une erreur est survenue lors de la modification.",
-                { id: toastId }
-            );
+            toast.error(getApiErrorMessage(error) || "Une erreur est survenue lors de la modification.", {
+                id: toastId,
+            });
         }
     };
 

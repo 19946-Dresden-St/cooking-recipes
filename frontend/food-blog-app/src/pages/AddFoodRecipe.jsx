@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../apiBase.js";
 import usePageTitle from "../hooks/usePageTitle.js";
 import toast from "react-hot-toast";
+import { getApiErrorMessage } from "../utils/getApiErrorMessage.js";
 
 export default function AddFoodRecipe() {
     usePageTitle("Qu'est-ce qu'on mange ? | Ajouter une recette");
@@ -148,10 +149,9 @@ export default function AddFoodRecipe() {
             toast.success("Recette ajoutée avec succès !", { id: toastId });
             navigate("/myRecipe");
         } catch (error) {
-            toast.error(
-                error?.response?.data?.message || "Une erreur est survenue lors de l’ajout de la recette.",
-                { id: toastId }
-            );
+            toast.error(getApiErrorMessage(error) || "Une erreur est survenue lors de l’ajout de la recette.", {
+                id: toastId,
+            });
         }
     };
 

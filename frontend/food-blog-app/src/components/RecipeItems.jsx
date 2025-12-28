@@ -6,6 +6,7 @@ import { API_BASE_URL } from "../apiBase.js";
 import CategoryFilterBar from "../components/CategoryFilterBar";
 import RecipeCard from "../components/RecipeCard";
 import ConfirmDeleteRecipeModal from "../components/ConfirmDeleteRecipeModal";
+import { getApiErrorMessage } from "../utils/getApiErrorMessage.js";
 
 export default function RecipeItems() {
     const recipes = useLoaderData();
@@ -78,6 +79,16 @@ export default function RecipeItems() {
                 authorization: "bearer " + localStorage.getItem("token"),
             },
         });
+        try {
+            await axios.delete(`${API_BASE_URL}/recipe/${id}`, {
+                headers: {
+                    authorization: "bearer " + localStorage.getItem("token"),
+                },
+            });
+        } catch (err) {
+            toast.error(getApiErrorMessage(err));
+            throw err; // important: pour que confirmDelete sache que ça a échoué
+        }
 
         setAllRecipes((recipes) => recipes.filter((recipe) => recipe._id !== id));
 
@@ -92,6 +103,8 @@ export default function RecipeItems() {
         try {
             await onDelete(deleteTarget._id);
             setDeleteTarget(null);
+        } catch {
+            // erreur déjà gérée dans onDelete
         } finally {
             setIsDeleting(false);
         }

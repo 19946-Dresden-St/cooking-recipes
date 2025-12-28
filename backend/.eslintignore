@@ -1,0 +1,5 @@
+node_modules
+public
+.adminjs
+*.min.js
+.DS_Store
